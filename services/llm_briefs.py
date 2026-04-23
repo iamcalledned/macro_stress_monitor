@@ -45,7 +45,28 @@ def _build_base_context(redis_client: RedisClient) -> Dict[str, Any]:
         "comparison": comparison
     }
 
-def _format_payload(mode: str, struct: Dict[str, Any], prev: Dict[str, Any], llm_result: Dict[str, Any]) -> Dict[str, Any]:
+import re
+
+def _validate_hallucinations(llm_text: str, context_string: str) -> Optional[str]:
+    tickers = set(re.findall(r'\b[A-Z]{2,5}\b', llm_text))
+    allowed_words = {"THE", "AND", "NOT", "FOR", "BUT", "OR", "IF", "IN", "ON", "AT", "TO", "IS", "ARE", "WAS", "WERE", "BE", "BEEN", "AS", "BY", "OF", "IT", "NO", "YES", "OK", "N/A", "ANY", "ALL", "NEW", "OLD", "NOW", "FED", "CPI", "GDP", "PCE", "FOMC", "ECB", "BOJ", "BOE", "YCC", "RSI", "DMA", "OAS", "YTD", "MTD", "QTD", "JSON", "URL", "API", "WHAT", "MATTERS", "RISKS", "SUPPORTS", "CONFIRMATIONS", "WHY", "THIS", "WATCH", "NEXT", "ALIGNMENT", "CAVEATS"}
+    
+    context_upper = context_string.upper()
+    hallucinated = []
+    
+    for t in tickers:
+        if t in allowed_words:
+            continue
+        if re.match(r'^(I|V|X|L|C|D|M)+$', t):
+            continue
+        if t not in context_upper:
+            hallucinated.append(t)
+            
+    if hallucinated:
+        return f"LLM hallucinated unsupported asset/metric: {', '.join(hallucinated)}"
+    return None
+
+def _format_payload(mode: str, struct: Dict[str, Any], prev: Dict[str, Any], llm_result: Dict[str, Any], ctx_string: str) -> Dict[str, Any]:
     """Formats the LLM result into the target UI payload structure."""
     
     now = datetime.now(timezone.utc).isoformat()
@@ -65,10 +86,19 @@ def _format_payload(mode: str, struct: Dict[str, Any], prev: Dict[str, Any], llm
         base["raw_text"] = llm_result.get("raw_text", "")
         return base
         
+    raw_text = llm_result.get("text", "")
+    
+    # Validation step
+    hallucination_err = _validate_hallucinations(raw_text, ctx_string)
+    if hallucination_err:
+        base["error"] = hallucination_err
+        base["raw_text"] = raw_text
+        return base
+        
     parsed = llm_result.get("parsed", {})
     base["headline"] = parsed.get("headline", "Summary unavailable.")
     base["sections"] = parsed.get("sections", {})
-    base["raw_text"] = llm_result.get("text", "")
+    base["raw_text"] = raw_text
     
     return base
 
@@ -81,7 +111,8 @@ def generate_morning_brief() -> Dict[str, Any]:
     )
     
     result = generate_structured_summary(system_prompt, user_prompt)
-    payload = _format_payload("morning_brief", ctx["struct"], ctx["prev"], result)
+    ctx_str = __import__("json").dumps(ctx)
+    payload = _format_payload("morning_brief", ctx["struct"], ctx["prev"], result, ctx_str)
     
     if payload.get("llm_meta", {}).get("success", True) and "error" not in payload:
         redis.client.set("msm:brief:morning:latest", __import__("json").dumps(payload))
@@ -97,7 +128,8 @@ def generate_evening_wrap() -> Dict[str, Any]:
     )
     
     result = generate_structured_summary(system_prompt, user_prompt)
-    payload = _format_payload("evening_wrap", ctx["struct"], ctx["prev"], result)
+    ctx_str = __import__("json").dumps(ctx)
+    payload = _format_payload("evening_wrap", ctx["struct"], ctx["prev"], result, ctx_str)
     
     if payload.get("llm_meta", {}).get("success", True) and "error" not in payload:
         redis.client.set("msm:brief:evening:latest", __import__("json").dumps(payload))

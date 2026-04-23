@@ -32,6 +32,7 @@ def _get_brain_hooks() -> Dict[str, Any]:
         "alignment_slot": None,
         "risk_bias_slot": None,
         "interpretation_slot": None,
+        "why_it_matters_slot": None,
     }
 
 
@@ -426,8 +427,13 @@ def build_brief_bindings(health: Dict[str, Any], struct: Dict[str, Any], prev: D
     # Caveats & Alignment
     cav_html = ""
     comp = compare_structural_vs_preview(struct, prev)
-    align_color = "color-green" if comp.get("alignment") == "aligned" else ("color-red" if comp.get("alignment") == "diverging" else "color-orange")
-    cav_html += f'<li style="margin-bottom: 4px;"><span class="{align_color}">■</span> <b>Alignment</b>: <span class="color-muted">{comp.get("alignment", "unknown").upper()}</span></li>'
+    is_div = comp.get("alignment") == "diverging"
+    align_color = "color-green" if comp.get("alignment") == "aligned" else ("color-red" if is_div else "color-orange")
+    
+    if is_div:
+        cav_html += f'<li style="margin-bottom: 4px; padding: 4px; background-color: rgba(255,0,0,0.2); border: 1px solid var(--red);"><span class="{align_color}">⚠</span> <b style="color: var(--red); text-transform: uppercase;">Alignment</b>: <span style="color: #fff; font-weight: bold;">{comp.get("alignment", "unknown").upper()}</span></li>'
+    else:
+        cav_html += f'<li style="margin-bottom: 4px;"><span class="{align_color}">■</span> <b>Alignment</b>: <span class="color-muted">{comp.get("alignment", "unknown").upper()}</span></li>'
     
     for c in brief.get("caveats", []):
         cav_html += f'<li style="margin-bottom: 4px;"><span class="color-orange">⚠</span> <span class="color-muted">{c}</span></li>'
@@ -444,7 +450,7 @@ def _format_llm_brief_html(brief: Dict[str, Any]) -> str:
     if "overall" in sections:
         html += f'<div style="margin-bottom: 8px;">{sections["overall"]}</div>'
         
-    for key in ["what_matters", "risks", "supports", "watch_next", "caveats"]:
+    for key in ["what_matters", "risks", "supports_or_confirmations", "why_this_matters", "watch_next", "caveats"]:
         items = sections.get(key, [])
         if items:
             if isinstance(items, str):
@@ -459,9 +465,9 @@ def _format_llm_brief_html(brief: Dict[str, Any]) -> str:
                 html += f'<li>{item}</li>'
             html += '</ul>'
             
-    if "structural_vs_preview" in sections:
+    if "alignment" in sections:
         html += f'<div style="color: var(--text-main); font-weight: bold; margin-top: 6px;">ALIGNMENT</div>'
-        html += f'<div style="margin-bottom: 8px;">{sections["structural_vs_preview"]}</div>'
+        html += f'<div style="margin-bottom: 8px;">{sections["alignment"]}</div>'
         
     if not html:
         html = f'<pre style="white-space: pre-wrap;">{brief.get("raw_text", "Empty response.")}</pre>'

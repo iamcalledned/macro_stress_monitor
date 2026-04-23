@@ -252,9 +252,10 @@ body {
     background-color: #222;
 }
 .tab-btn.active {
-    background-color: #1a1a1a;
+    background-color: #222;
     color: var(--text-bright);
-    border-bottom: 2px solid var(--accent);
+    border-bottom: 3px solid var(--accent);
+    font-weight: 900;
 }
 
 .tab-content-container {
