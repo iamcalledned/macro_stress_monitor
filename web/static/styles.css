@@ -190,9 +190,14 @@ body {
 }
 
 .data-table {
-    width: max-content;
-    min-width: 60%;
+    width: 100%;
     margin-bottom: 8px;
+}
+.data-table th, .data-table td {
+    width: 1%;
+}
+.data-table th:last-child, .data-table td:last-child {
+    width: auto;
 }
 
 .dense-table th {
