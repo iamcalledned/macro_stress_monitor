@@ -2,97 +2,109 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Macro Stress Monitor</title>
+    <title>MSM | Terminal</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-    <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
 </head>
 <body>
-    <div class="container">
-        <section class="section banner" id="decision-banner">
-            <div class="banner-layout">
-                <div class="banner-copy">
-                    <p class="kicker">Regime Summary</p>
-                    <h1>Current Environment: <span id="env-label">--</span></h1>
-                    <p class="summary" id="headline-summary">Loading summary...</p>
-                    <p class="driver-line" id="score-drivers">Primary drivers: --</p>
-                    <div class="banner-meta">
-                        <span id="preview-badge" class="badge preview-badge">Intraday Preview: --</span>
-                        <span id="integrity-badge" class="badge">Run integrity --</span>
-                        <span id="confidence-badge" class="badge">Confidence --</span>
-                        <span id="reliable-badge" class="badge">Reliable --</span>
-                        <span id="last-updated" class="last-updated">As of: --</span>
+    <div class="terminal-container">
+        <!-- 1. Top status strip -->
+        <header class="status-strip" id="status-strip">
+            <div class="strip-section">STRUCTURAL: <span id="ts-regime" class="badge">--</span> <span id="ts-score">--</span></div>
+            <div class="strip-section">PREVIEW: <span id="ts-preview" class="badge">--</span></div>
+            <div class="strip-section">QUALITY: <span id="ts-quality">--</span> | CONF: <span id="ts-conf">--</span></div>
+            <div class="strip-section">FLAGS: <span id="ts-flags">None</span></div>
+            <div class="strip-section right">STRUC: <span id="ts-struc-time">--</span> | PREV: <span id="ts-prev-time">--</span></div>
+        </header>
+
+        <div class="grid-main">
+            <!-- Left Column: Summaries & Health -->
+            <div class="col-left">
+                <!-- 3. Structural summary panel -->
+                <section class="panel">
+                    <div class="panel-header">STRUCTURAL SUMMARY</div>
+                    <div class="panel-content">
+                        <div class="big-score" id="ss-score">--</div>
+                        <div class="summary-line" id="ss-headline">Loading...</div>
+                        <table class="dense-table prop-table">
+                            <tr><td>Regime</td><td id="ss-regime">--</td></tr>
+                            <tr><td>Drivers</td><td id="ss-drivers">--</td></tr>
+                            <tr><td>Delta vs Prior</td><td id="ss-delta">--</td></tr>
+                        </table>
                     </div>
-                    <div class="low-confidence" id="low-confidence-warning"></div>
-                </div>
-                <div class="composite-badge">
-                    <p class="score-label">Composite Score</p>
-                    <div id="composite-score" class="score-big">--</div>
-                </div>
+                </section>
+
+                <!-- 4. Preview summary panel -->
+                <section class="panel">
+                    <div class="panel-header">PREVIEW SUMMARY</div>
+                    <div class="panel-content">
+                        <div class="summary-line" id="ps-assessment">Loading...</div>
+                        <table class="dense-table prop-table" id="ps-components">
+                            <!-- populated by js -->
+                        </table>
+                        <table class="dense-table prop-table" style="margin-top: 8px;">
+                            <tr><td>Session</td><td id="ps-session">--</td></tr>
+                            <tr><td>Delta vs Prior</td><td id="ps-delta">--</td></tr>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- 2. Health and execution panel -->
+                <section class="panel">
+                    <div class="panel-header">SYSTEM HEALTH</div>
+                    <div class="panel-content">
+                        <table class="dense-table prop-table">
+                            <tr><td>Struc Age</td><td id="hl-struc-age">--</td></tr>
+                            <tr><td>Prev Age</td><td id="hl-prev-age">--</td></tr>
+                            <tr><td>Execution</td><td id="hl-exec">--</td></tr>
+                            <tr><td>Missing Critical</td><td id="hl-missing-crit">--</td></tr>
+                            <tr><td>Missing Non-Crit</td><td id="hl-missing-noncrit">--</td></tr>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- 7. Delta / change view -->
+                <section class="panel">
+                    <div class="panel-header">NOTABLE CHANGES</div>
+                    <div class="panel-content" id="delta-content">
+                        <ul id="delta-list" style="margin:0; padding-left:16px; font-size:12px; color:var(--text-muted);">
+                            <li>Loading...</li>
+                        </ul>
+                    </div>
+                </section>
             </div>
-        </section>
 
-        <section class="section" id="preview-panel">
-            <div class="section-head">
-                <h2>Intraday Preview (Price Proxies)</h2>
-                <p class="as-of-line">As of: <strong id="preview-as-of">--</strong></p>
+            <!-- Right Column: Market Context Navigator -->
+            <div class="col-right">
+                <!-- 5. Market context navigator -->
+                <section class="panel flex-panel">
+                    <div class="panel-header">MARKET CONTEXT NAVIGATOR</div>
+                    <div class="tabs" id="context-tabs">
+                        <button class="tab-btn active" data-target="ctx-macro">MACRO / RATES</button>
+                        <button class="tab-btn" data-target="ctx-credit">CREDIT / LIQ</button>
+                        <button class="tab-btn" data-target="ctx-equity">EQUITY</button>
+                        <button class="tab-btn" data-target="ctx-sectors">SECTORS</button>
+                        <button class="tab-btn" data-target="ctx-vol">VOL / STRESS</button>
+                        <button class="tab-btn" data-target="ctx-flight">SAFETY / DEF</button>
+                        <button class="tab-btn" data-target="ctx-cross">CROSS ASSET</button>
+                        <button class="tab-btn" data-target="ctx-breadth">BREADTH</button>
+                        <button class="tab-btn" data-target="ctx-positioning">POSITIONING</button>
+                    </div>
+                    
+                    <div class="tab-content-container" id="context-content">
+                        <!-- 6. Dense inspection tables populated here -->
+                    </div>
+                </section>
+
+                <!-- 8. Raw audit drilldown -->
+                <section class="panel raw-audit-panel">
+                    <div class="panel-header" id="audit-toggle">RAW AUDIT DRILLDOWN [+]</div>
+                    <div class="panel-content hidden" id="audit-content">
+                        <pre id="audit-json"></pre>
+                    </div>
+                </section>
             </div>
-            <div class="preview-grid" id="preview-grid"></div>
-            <p class="preview-assessment" id="preview-assessment">Preview suggests: --</p>
-        </section>
-
-        <div class="grid-two">
-            <section class="section">
-                <h2>Spillover Risk: Equity -&gt; Credit</h2>
-                <p class="spillover-headline" id="spillover-headline">Loading...</p>
-                <p class="spillover-detail" id="spillover-detail">Loading...</p>
-                <div class="check-grid" id="spillover-checks"></div>
-            </section>
-
-            <section class="section">
-                <h2>What This Means for Positioning</h2>
-                <div class="positioning-list" id="positioning-list"></div>
-            </section>
         </div>
-
-        <section class="section">
-            <h2>Conditions That Would Escalate This Environment</h2>
-            <div class="trigger-grid" id="systemic-trigger-list"></div>
-        </section>
-
-        <section class="section">
-            <h2>Composite Score Trend</h2>
-            <div class="chart-meta">
-                <p>Latest score (snapshot): <strong id="chart-latest-score">--</strong></p>
-                <p>History last point: <strong id="chart-history-last">--</strong></p>
-                <p id="history-lag-label" class="history-lag"></p>
-                <p class="as-of-line">As of: <strong id="chart-as-of">--</strong></p>
-            </div>
-            <div id="chart-container"></div>
-        </section>
-
-        <section class="section">
-            <div class="section-head">
-                <h2>Component Indicators</h2>
-                <p class="as-of-line">As of: <strong id="components-as-of">--</strong></p>
-            </div>
-            <div class="indicator-grid" id="indicator-grid"></div>
-        </section>
-
-        <section class="section compact">
-            <details class="alert-details">
-                <summary>Last Alert (Historical Event)</summary>
-                <p class="alert-note">Historical snapshot from alert time. It can differ from the current composite score.</p>
-                <div class="alert-row">
-                    <p>Timestamp: <strong id="last-alert-timestamp">None</strong></p>
-                    <p>Score at alert time: <strong id="last-alert-score">N/A</strong></p>
-                    <p>Cooldown until: <strong id="last-alert-cooldown">N/A</strong></p>
-                </div>
-                <ul class="alert-list" id="last-alert-reasons"></ul>
-            </details>
-        </section>
     </div>
-
     <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>

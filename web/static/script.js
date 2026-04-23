@@ -1,388 +1,355 @@
-document.addEventListener("DOMContentLoaded", function () {
-    const chartContainer = document.getElementById("chart-container");
-    let chart = null;
-    let scoreSeries = null;
-    let latestPriceLine = null;
+document.addEventListener("DOMContentLoaded", () => {
 
-    if (window.LightweightCharts && chartContainer) {
-        chart = LightweightCharts.createChart(chartContainer, {
-            layout: {
-                background: { color: "#101826" },
-                textColor: "#9cb0cf",
-            },
-            grid: {
-                vertLines: { color: "#2d3a52" },
-                horzLines: { color: "#2d3a52" },
-            },
-            timeScale: { borderColor: "#2d3a52" },
-            rightPriceScale: { borderColor: "#2d3a52" },
+    const TABS = document.querySelectorAll(".tab-btn");
+    TABS.forEach(btn => {
+        btn.addEventListener("click", () => {
+            TABS.forEach(t => t.classList.remove("active"));
+            btn.classList.add("active");
+            document.querySelectorAll(".tab-pane").forEach(p => p.classList.remove("active"));
+            const target = btn.getAttribute("data-target");
+            const pane = document.getElementById(target);
+            if(pane) pane.classList.add("active");
         });
+    });
 
-        const areaOpts = {
-            topColor: "rgba(222, 75, 75, 0.30)",
-            bottomColor: "rgba(222, 75, 75, 0.00)",
-            lineColor: "rgba(222, 75, 75, 1)",
-            lineWidth: 2,
-        };
+    const auditToggle = document.getElementById("audit-toggle");
+    const auditContent = document.getElementById("audit-content");
+    auditToggle.addEventListener("click", () => {
+        auditContent.classList.toggle("hidden");
+        auditToggle.textContent = auditContent.classList.contains("hidden") 
+            ? "RAW AUDIT DRILLDOWN [+]" 
+            : "RAW AUDIT DRILLDOWN [-]";
+    });
 
-        if (typeof chart.addAreaSeries === "function") {
-            scoreSeries = chart.addAreaSeries(areaOpts);
-        } else if (typeof chart.addSeries === "function" && window.LightweightCharts.AreaSeries) {
-            scoreSeries = chart.addSeries(window.LightweightCharts.AreaSeries, areaOpts);
-        } else {
-            chartContainer.style.display = "none";
-            chart = null;
-        }
-    } else if (chartContainer) {
-        chartContainer.style.display = "none";
+    function formatNum(val, decimals=2) {
+        if(val === null || val === undefined) return "--";
+        const num = Number(val);
+        if(isNaN(num)) return val;
+        return num.toFixed(decimals);
     }
 
-    function envClass(color) {
-        return `env-${color || "yellow"}`;
-    }
-
-    function esc(value) {
-        if (value === null || value === undefined) return "";
-        return String(value)
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;");
-    }
-
-    function formatDate(iso) {
-        if (!iso) return "N/A";
-        const d = new Date(iso);
-        return Number.isNaN(d.getTime()) ? iso : d.toLocaleString();
-    }
-
-    function formatScore(value) {
-        if (value === null || value === undefined || value === "") return "--";
-        const num = Number(value);
-        if (!Number.isFinite(num)) return "--";
-        return String(Math.round(num));
-    }
-
-    function renderUnavailable(message) {
-        const text = message || "Dashboard data unavailable.";
-        document.getElementById("decision-banner").className = "section banner env-red";
-        document.getElementById("env-label").textContent = "UNAVAILABLE";
-        document.getElementById("headline-summary").textContent = text;
-        document.getElementById("score-drivers").textContent = "Start Redis and run a structural update to populate dashboard data.";
-        document.getElementById("composite-score").textContent = "--";
-        document.getElementById("last-updated").textContent = "As of: N/A";
-
-        const previewBadge = document.getElementById("preview-badge");
-        previewBadge.textContent = "Intraday Preview: OFF";
-        previewBadge.className = "badge preview-badge preview-off";
-
-        const integrityBadge = document.getElementById("integrity-badge");
-        integrityBadge.textContent = "Data unavailable";
-        integrityBadge.className = "badge integrity-lagging";
-
-        const confidenceBadge = document.getElementById("confidence-badge");
-        confidenceBadge.textContent = "Confidence N/A";
-        confidenceBadge.className = "badge env-red";
-
-        const reliableBadge = document.getElementById("reliable-badge");
-        reliableBadge.textContent = "Reliable No";
-        reliableBadge.className = "badge env-red";
-
-        const lowConfidence = document.getElementById("low-confidence-warning");
-        lowConfidence.style.display = "block";
-        lowConfidence.textContent = text;
-
-        document.getElementById("preview-as-of").textContent = "N/A";
-        document.getElementById("preview-grid").innerHTML = "";
-        document.getElementById("preview-assessment").textContent = "Preview suggests: Unavailable";
-        document.getElementById("spillover-headline").textContent = "Unavailable";
-        document.getElementById("spillover-detail").textContent = "No structural snapshot is available.";
-        document.getElementById("spillover-checks").innerHTML = "";
-        document.getElementById("positioning-list").innerHTML = "";
-        document.getElementById("systemic-trigger-list").innerHTML = "";
-        document.getElementById("chart-latest-score").textContent = "--";
-        document.getElementById("chart-history-last").textContent = "--";
-        document.getElementById("chart-as-of").textContent = "N/A";
-        document.getElementById("history-lag-label").textContent = "";
-        document.getElementById("components-as-of").textContent = "N/A";
-        document.getElementById("indicator-grid").innerHTML = "";
-        document.getElementById("last-alert-timestamp").textContent = "None";
-        document.getElementById("last-alert-score").textContent = "N/A";
-        document.getElementById("last-alert-cooldown").textContent = "N/A";
-        document.getElementById("last-alert-reasons").innerHTML = "<li>No alert data available.</li>";
-    }
-
-    function classFromTone(tone) {
-        if (tone === "positive") return "tone-positive";
-        if (tone === "defensive") return "tone-defensive";
-        return "tone-caution";
-    }
-
-    function updateBanner(data) {
-        const banner = data.regime_banner || {};
-        const envLabel = banner.label || data.environment?.label || "--";
-        const envColor = banner.color || data.environment?.color || "yellow";
-        const drivers = Array.isArray(banner.drivers) ? banner.drivers : [];
-
-        document.getElementById("decision-banner").className = `section banner ${envClass(envColor)}`;
-        document.getElementById("env-label").textContent = envLabel;
-        document.getElementById("headline-summary").textContent = banner.summary || "Summary unavailable.";
-        document.getElementById("score-drivers").textContent = drivers.length
-            ? `Primary drivers: ${drivers.join(", ")}.`
-            : "Primary drivers: no dominant stress factor.";
-        document.getElementById("composite-score").textContent = formatScore(banner.score ?? data.composite_score);
-        document.getElementById("last-updated").textContent = `As of: ${formatDate(data.as_of?.banner || data.computed_at_utc)}`;
-
-        const confidence = banner.confidence || "N/A";
-        const confEl = document.getElementById("confidence-badge");
-        confEl.textContent = `Confidence ${confidence}`;
-        confEl.className = `badge ${envClass(
-            confidence === "HIGH" ? "green" : confidence === "MED" ? "yellow" : "red"
-        )}`;
-
-        const reliable = banner.reliable !== false;
-        const relEl = document.getElementById("reliable-badge");
-        relEl.textContent = `Reliable ${reliable ? "Yes" : "No"}`;
-        relEl.className = `badge ${envClass(reliable ? "green" : "red")}`;
-
-        const integrity = data.integrity || {};
-        const integrityEl = document.getElementById("integrity-badge");
-        integrityEl.textContent = integrity.badge_text || "Run integrity --";
-        integrityEl.className = `badge ${
-            integrity.consistent ? "integrity-consistent" : "integrity-lagging"
-        }`;
-
-        const lowConfidence = document.getElementById("low-confidence-warning");
-        if (!reliable) {
-            lowConfidence.style.display = "block";
-            lowConfidence.textContent = "Low confidence: weighted component coverage is incomplete.";
-        } else {
-            lowConfidence.style.display = "none";
+    function formatTimeET(iso) {
+        if(!iso) return "--";
+        try {
+            const d = new Date(iso);
+            if(isNaN(d)) return iso;
+            return d.toLocaleTimeString("en-US", {timeZone: "America/New_York", hour12: false}) + " ET";
+        } catch(e) {
+            return iso;
         }
     }
 
-    function renderSpillover(data) {
-        const spill = data.spillover_risk || {};
-        document.getElementById("spillover-headline").textContent = spill.headline || "Unavailable";
-        document.getElementById("spillover-headline").className = `spillover-headline ${envClass(spill.color || "green")}`;
-        document.getElementById("spillover-detail").textContent = spill.detail || "";
-
-        const checks = Array.isArray(spill.checks) ? spill.checks : [];
-        document.getElementById("spillover-checks").innerHTML = checks.map((check) => `
-            <div class="check-item ${check.triggered ? "triggered" : "clear"}">
-                <span>${esc(check.label)}</span>
-                <span class="check-state">${check.triggered ? "On" : "Off"}</span>
-            </div>
-        `).join("");
+    function getEnvColor(score) {
+        if(score <= 30) return "bg-green";
+        if(score <= 60) return "bg-yellow";
+        if(score <= 80) return "bg-orange";
+        return "bg-red";
+    }
+    
+    function getEnvTextColor(score) {
+        if(score <= 30) return "color-green";
+        if(score <= 60) return "color-yellow";
+        if(score <= 80) return "color-orange";
+        return "color-red";
     }
 
-    function renderPositioning(data) {
-        const items = Array.isArray(data.positioning_guidance) ? data.positioning_guidance : [];
-        document.getElementById("positioning-list").innerHTML = items.map((item) => `
-            <div class="positioning-item">
-                <div class="positioning-top">
-                    <span class="positioning-bucket">${esc(item.bucket)}</span>
-                    <span class="positioning-stance ${classFromTone(item.tone)}">${esc(item.stance)}</span>
-                </div>
-                <p>${esc(item.note)}</p>
-            </div>
-        `).join("");
-    }
+    async function fetchData() {
+        try {
+            const [healthRes, structRes, prevRes, ctxRes] = await Promise.all([
+                fetch("/api/health"),
+                fetch("/api/macro/latest"),
+                fetch("/api/macro/preview"),
+                fetch("/api/macro/context")
+            ]);
+            
+            const health = healthRes.ok ? await healthRes.json() : null;
+            const struct = structRes.ok ? await structRes.json() : null;
+            const prev = prevRes.ok ? await prevRes.json() : null;
+            const ctx = ctxRes.ok ? await ctxRes.json() : null;
 
-    function renderSystemicTriggers(data) {
-        const items = Array.isArray(data.systemic_triggers) ? data.systemic_triggers : [];
-        document.getElementById("systemic-trigger-list").innerHTML = items.map((item) => `
-            <div class="trigger-item ${item.triggered ? "triggered" : "not-triggered"}">
-                <strong>${esc(item.label)}</strong>
-                <div class="rule">${esc(item.rule || "")}</div>
-                <div class="state">${item.triggered ? "Triggered" : "Not Triggered"}</div>
-            </div>
-        `).join("");
-    }
-
-    function renderPreview(data) {
-        const preview = data.intraday_preview || {};
-        const badge = document.getElementById("preview-badge");
-        const panel = document.getElementById("preview-panel");
-        const asOf = document.getElementById("preview-as-of");
-        const grid = document.getElementById("preview-grid");
-        const assessment = document.getElementById("preview-assessment");
-
-        const available = preview.available === true;
-        const stale = preview.stale === true;
-        badge.textContent = preview.badge_text || "Intraday Preview: OFF";
-        badge.className = `badge preview-badge ${!available ? "preview-off" : stale ? "preview-stale" : "preview-on"}`;
-        panel.className = `section ${stale ? "preview-dim" : ""}`.trim();
-
-        asOf.textContent = formatDate(preview.computed_at_utc);
-        assessment.textContent = preview.assessment
-            ? `Preview suggests: ${preview.assessment}`
-            : "Preview suggests: Unavailable";
-
-        const components = preview.components || {};
-        const order = ["loans", "financials", "jpy"];
-        grid.innerHTML = order.map((id) => {
-            const item = components[id] || {};
-            const label = esc(item.label || id);
-            const stateText = esc(item.state_text || "Unavailable");
-            const level = esc(item.level || "unavailable");
-            return `
-                <div class="preview-item status-${level}">
-                    <span class="preview-name">${label}</span>
-                    <span class="preview-state">${stateText}</span>
-                </div>
-            `;
-        }).join("");
-    }
-
-    function advancedMetricsHtml(id, details) {
-        if (!details || details.data_missing) {
-            return "<p>No advanced metrics.</p>";
+            render(health, struct, prev, ctx);
+            renderAudit({health, struct, prev, ctx});
+        } catch (err) {
+            console.error("Fetch error", err);
         }
-
-        const rows = [];
-        if (id === "ig_spreads" || id === "hy_credit") {
-            rows.push(`Latest: <span>${details.latest?.toFixed?.(2) ?? "--"}</span>`);
-            rows.push(`5d: <span>${details.change_5d?.toFixed?.(2) ?? "--"}</span>`);
-            rows.push(`20d: <span>${details.change_20d?.toFixed?.(2) ?? "--"}</span>`);
-            rows.push(`60d: <span>${details.change_60d?.toFixed?.(2) ?? "--"}</span>`);
-            rows.push(`Z-score: <span>${details.z_score_1y?.toFixed?.(2) ?? "--"}</span>`);
-        } else if (id === "leveraged_loans") {
-            rows.push(`Price vs 200DMA: <span>${((details.price_vs_200dma || 0) * 100).toFixed(2)}%</span>`);
-            rows.push(`30d Drawdown: <span>${((details.drawdown_30d || 0) * 100).toFixed(2)}%</span>`);
-            rows.push(`Vol Z-score: <span>${details.volatility_z_score?.toFixed?.(2) ?? "--"}</span>`);
-        } else if (id === "xlf_spy" || id === "kre_spy") {
-            rows.push(`Latest ratio: <span>${details.latest_ratio?.toFixed?.(3) ?? "--"}</span>`);
-            rows.push(`Z-score: <span>${details.z_score_1y?.toFixed?.(2) ?? "--"}</span>`);
-            rows.push(`vs 50DMA: <span>${((details.ratio_vs_ma50 || 0) * 100).toFixed(2)}%</span>`);
-            rows.push(`vs 200DMA: <span>${((details.ratio_vs_ma200 || 0) * 100).toFixed(2)}%</span>`);
-            rows.push(`Breakdown: <span>${details.breakdown_flag ? "Yes" : "No"}</span>`);
-        } else if (id === "30y_yield") {
-            rows.push(`Latest yield: <span>${details.latest_yield?.toFixed?.(2) ?? "--"}%</span>`);
-            rows.push(`20d bps: <span>${details.dgs30_20d_bps?.toFixed?.(1) ?? "--"}</span>`);
-            rows.push(`Signal: <span>${esc(details.dgs30_signal || "neutral")}</span>`);
-            rows.push(`Below 200DMA: <span>${details.is_below_200dma ? "Yes" : "No"}</span>`);
-        } else if (id === "jpy_risk") {
-            rows.push(`5d move: <span>${details.move_5d_pct?.toFixed?.(2) ?? "--"}%</span>`);
-            rows.push(`Vol percentile: <span>${details.vol_percentile_1y?.toFixed?.(1) ?? "--"}</span>`);
-            rows.push(`USDJPY 20DMA: <span>${details.usdjpy_20dma?.toFixed?.(2) ?? "--"}</span>`);
-            rows.push(`Confirmed: <span>${details.jpy_confirmed ? "Yes" : "No"}</span>`);
-        }
-
-        return rows.map((row) => `<p>${row}</p>`).join("");
     }
 
-    function renderCards(data) {
-        const cards = Array.isArray(data.component_cards) ? data.component_cards : [];
-        document.getElementById("components-as-of").textContent = formatDate(data.as_of?.components);
-        document.getElementById("indicator-grid").innerHTML = cards.map((card) => `
-            <div class="indicator-card status-${esc(card.status?.level || "no_data")}">
-                <div class="card-top">
-                    <div>
-                        <h3 class="indicator-title">${esc(card.label)}</h3>
-                        <div class="status-line">
-                            <span class="status-dot"></span>
-                            <span>${esc(card.status?.text || "No Data")}</span>
-                        </div>
-                    </div>
-                    <div class="subscore">Subscore: ${formatScore(card.subscore)}</div>
-                </div>
-                <p class="driver">${esc(card.driver || "")}</p>
-                <p class="why">${esc(card.why_it_matters || "")}</p>
-                <details class="advanced">
-                    <summary>Advanced metrics</summary>
-                    <div class="metrics">${advancedMetricsHtml(card.id, card.details || {})}</div>
-                </details>
-            </div>
-        `).join("");
-    }
-
-    function renderChart(data) {
-        const chartMeta = data.chart || {};
-        const points = Array.isArray(chartMeta.points) ? chartMeta.points : [];
-        const latestSnapshotScore = formatScore(chartMeta.latest_marker_score ?? data.composite_score);
-        const integrity = data.integrity || {};
-        const historyLastScore = integrity.history_last_score;
-        const historyLag = integrity.history_lag_minutes;
-
-        document.getElementById("chart-latest-score").textContent = latestSnapshotScore;
-        document.getElementById("chart-history-last").textContent = historyLastScore === null || historyLastScore === undefined
-            ? "--"
-            : formatScore(historyLastScore);
-        document.getElementById("chart-as-of").textContent = formatDate(data.as_of?.chart);
-
-        const lagLabel = document.getElementById("history-lag-label");
-        if (integrity.consistent) {
-            lagLabel.className = "history-lag consistent";
-            lagLabel.textContent = "Consistent run";
-        } else {
-            lagLabel.className = "history-lag lagging";
-            lagLabel.textContent = `History lagging by ${historyLag ?? "?"} min`;
-        }
-
-        if (scoreSeries && chart && points.length > 0) {
-            const chartData = points.map((point) => ({
-                time: point.time,
-                value: Number(point.value),
-            }));
-            scoreSeries.setData(chartData);
-            chart.timeScale().fitContent();
-
-            if (latestPriceLine && typeof scoreSeries.removePriceLine === "function") {
-                scoreSeries.removePriceLine(latestPriceLine);
+    function render(health, struct, prev, ctx) {
+        // Status Strip
+        const tsRegime = document.getElementById("ts-regime");
+        const tsScore = document.getElementById("ts-score");
+        if(struct && !struct.error) {
+            const score = struct.composite_score;
+            tsRegime.textContent = struct.regime_label || "UNKNOWN";
+            tsRegime.className = `badge ${getEnvColor(score)}`;
+            tsScore.textContent = score;
+            tsScore.className = getEnvTextColor(score);
+            document.getElementById("ts-struc-time").textContent = formatTimeET(struct.computed_at_utc);
+            
+            const conf = struct.state_confidence?.confidence_level || struct.confidence || "N/A";
+            const q = struct.data_quality?.completeness_score !== undefined 
+                ? `${Math.round(struct.data_quality.completeness_score * 100)}%` : "N/A";
+            
+            document.getElementById("ts-quality").textContent = q;
+            document.getElementById("ts-conf").textContent = conf;
+            
+            const flags = [];
+            if(struct.is_stale) flags.push("STRUC_STALE");
+            if(struct.anomaly_flags) {
+                if(struct.anomaly_flags.extreme_move) flags.push("EXT_MOVE");
+                if(struct.anomaly_flags.volatility_spike) flags.push("VOL_SPIKE");
+                if(struct.anomaly_flags.multi_asset_divergence) flags.push("DIVERGENCE");
             }
-
-            if (typeof scoreSeries.createPriceLine === "function") {
-                latestPriceLine = scoreSeries.createPriceLine({
-                    price: Number(chartMeta.latest_marker_score ?? data.composite_score),
-                    color: "#e0b84f",
-                    lineWidth: 1,
-                    lineStyle: 2,
-                    axisLabelVisible: true,
-                    title: "Snapshot",
-                });
+            if(struct.data_quality?.critical_missing) flags.push("MISSING_CRIT");
+            
+            const tsFlags = document.getElementById("ts-flags");
+            if(flags.length > 0) {
+                tsFlags.textContent = flags.join(" ");
+                tsFlags.className = "color-orange";
+            } else {
+                tsFlags.textContent = "OK";
+                tsFlags.className = "color-green";
             }
         }
+
+        if(prev && !prev.error) {
+            const pa = prev.preview_spillover_assessment || "N/A";
+            const badge = document.getElementById("ts-preview");
+            badge.textContent = pa;
+            if(pa.includes("Credit confirming")) badge.className = "badge bg-red";
+            else if(pa.includes("watch credit")) badge.className = "badge bg-orange";
+            else badge.className = "badge bg-green";
+            document.getElementById("ts-prev-time").textContent = formatTimeET(prev.computed_at_utc);
+        } else {
+            document.getElementById("ts-preview").textContent = "OFF";
+            document.getElementById("ts-preview").className = "badge bg-muted";
+            document.getElementById("ts-prev-time").textContent = "--";
+        }
+
+        // Structural Summary
+        if(struct && !struct.error) {
+            document.getElementById("ss-score").textContent = struct.composite_score;
+            document.getElementById("ss-score").className = `big-score ${getEnvTextColor(struct.composite_score)}`;
+            document.getElementById("ss-headline").textContent = struct.headline_summary || "--";
+            document.getElementById("ss-regime").textContent = struct.regime || "--";
+            document.getElementById("ss-drivers").textContent = (struct.primary_drivers || []).join(", ") || "None";
+            
+            let dText = "--";
+            if(struct.delta && struct.delta.available) {
+                dText = `${struct.delta.score_change > 0 ? '+' : ''}${struct.delta.score_change} pts`;
+                if(struct.delta.regime_changed) dText += ` (Regime changed)`;
+            }
+            document.getElementById("ss-delta").textContent = dText;
+        }
+
+        // Preview Summary
+        if(prev && !prev.error) {
+            document.getElementById("ps-assessment").textContent = prev.preview_spillover_assessment || "--";
+            let psHtml = "";
+            const pc = prev.component_statuses || prev.components || {};
+            for(const [k,v] of Object.entries(pc)) {
+                let text = typeof v === 'object' ? (v.status || v.state?.text || JSON.stringify(v)) : v;
+                psHtml += `<tr><td>${k}</td><td>${text}</td></tr>`;
+            }
+            document.getElementById("ps-components").innerHTML = psHtml || "<tr><td colspan='2'>No components</td></tr>";
+            
+            document.getElementById("ps-session").textContent = prev.session?.market_session || "--";
+            let pdText = "--";
+            if(prev.delta && prev.delta.available) {
+                pdText = "Updated";
+            }
+            document.getElementById("ps-delta").textContent = pdText;
+        }
+
+        // Health
+        if(health && !health.error) {
+            document.getElementById("hl-struc-age").textContent = `${Math.round((health.structural_age_seconds || 0)/60)}m`;
+            document.getElementById("hl-prev-age").textContent = `${Math.round((health.preview_age_seconds || 0)/60)}m`;
+            document.getElementById("hl-struc-age").className = health.structural_stale ? "color-red" : "color-green";
+            document.getElementById("hl-prev-age").className = health.preview_stale ? "color-red" : "color-green";
+            
+            // if struct is passed in, use execution from it
+            if(struct && struct.execution) {
+                document.getElementById("hl-exec").textContent = `${formatNum(struct.execution.total_seconds, 2)}s`;
+            }
+            if(struct && struct.data_quality) {
+                document.getElementById("hl-missing-crit").textContent = struct.data_quality.critical_missing ? "YES" : "NO";
+                document.getElementById("hl-missing-crit").className = struct.data_quality.critical_missing ? "color-red" : "color-green";
+                document.getElementById("hl-missing-noncrit").textContent = struct.data_quality.noncritical_missing_count || "0";
+            }
+        }
+
+        // Deltas
+        const dList = document.getElementById("delta-list");
+        let dHtml = "";
+        if(struct && struct.delta && struct.delta.available) {
+            if(struct.delta.regime_changed) {
+                dHtml += `<li>Regime changed from <strong>${struct.delta.previous_regime}</strong> to <strong>${struct.delta.current_regime}</strong></li>`;
+            }
+            const stc = struct.delta.component_state_changes || {};
+            for(const [k,v] of Object.entries(stc)) {
+                dHtml += `<li>${k}: state changed ${v.previous} -> ${v.current}</li>`;
+            }
+            const ssc = struct.delta.component_subscore_changes || {};
+            for(const [k,v] of Object.entries(ssc)) {
+                dHtml += `<li>${k}: subscore ${v.previous} -> ${v.current}</li>`;
+            }
+        }
+        if(!dHtml) dHtml = "<li>No significant structural deltas.</li>";
+        dList.innerHTML = dHtml;
+
+        // Market Context
+        if(ctx && ctx.market_context && !ctx.error) {
+            renderContext(ctx.market_context);
+        } else {
+            document.getElementById("context-content").innerHTML = "<div class='panel-content'>Context data unavailable.</div>";
+        }
     }
 
-    function renderAlert(data) {
-        const alert = data.alert_display || {};
-        document.getElementById("last-alert-timestamp").textContent = formatDate(alert.timestamp);
-        document.getElementById("last-alert-score").textContent = formatScore(alert.score_at_alert);
-        document.getElementById("last-alert-cooldown").textContent = formatDate(alert.cooldown_until);
+    function renderContext(mc) {
+        const ctc = document.getElementById("context-content");
+        ctc.innerHTML = "";
+        
+        const sections = [
+            { id: "ctx-macro", key: "macro_rates", title: "Macro / Rates", headers: ["Series", "Value", "5d", "20d", "Z-Score", "State"] },
+            { id: "ctx-credit", key: "credit_liquidity", title: "Credit / Liquidity", headers: ["Series", "Value", "Z-Score", "State", "Stretch"] },
+            { id: "ctx-equity", key: "equity_index_state", title: "Equity Index", headers: ["Asset", "Return 5d", "Return 20d", "vs 200DMA", "Z-Score", "State", "Stretch"] },
+            { id: "ctx-sectors", key: "sector_state", title: "Sectors", headers: ["Sector", "vs SPY 5d", "vs SPY 20d", "Z-Score", "Leadership"] },
+            { id: "ctx-vol", key: "volatility_stress", title: "Volatility / Stress", headers: ["Asset", "Realized Vol", "Percentile", "State"] },
+            { id: "ctx-flight", key: "flight_to_safety", title: "Flight to Safety", headers: ["Asset", "State", "Stretch", "Description"] },
+            { id: "ctx-cross", key: "cross_asset_relationships", title: "Cross Asset", headers: ["Pair", "Ratio", "5d", "Z-Score", "State"] },
+            { id: "ctx-breadth", key: "breadth_participation", title: "Breadth", headers: ["Metric", "Value", "Pct"] },
+            { id: "ctx-positioning", key: "positioning_stretch", title: "Positioning", headers: ["Asset", "RSI", "vs 200DMA", "Stretch"] }
+        ];
 
-        const reasons = Array.isArray(alert.reasons) ? alert.reasons.slice(0, 3) : [];
-        document.getElementById("last-alert-reasons").innerHTML = reasons.length
-            ? reasons.map((reason) => `<li>${esc(reason)}</li>`).join("")
-            : "<li>No recent alert reasons.</li>";
-    }
+        sections.forEach((sec, idx) => {
+            const data = mc[sec.key] || {};
+            const active = idx === 0 ? "active" : "";
+            let html = `<div class="tab-pane ${active}" id="${sec.id}">`;
+            html += `<table class="dense-table data-table"><thead><tr>`;
+            sec.headers.forEach(h => html += `<th>${h}</th>`);
+            html += `</tr></thead><tbody>`;
 
-    function updateDashboard() {
-        fetch("/api/dashboard")
-            .then((response) => response.json().then((data) => ({ ok: response.ok, data })))
-            .then(({ ok, data }) => {
-                if (!ok || data.error) {
-                    renderUnavailable(data.error || "Dashboard API unavailable.");
-                    return;
+            if(Object.keys(data).length === 0) {
+                html += `<tr><td colspan="${sec.headers.length}">No data available</td></tr>`;
+            } else {
+                if(sec.key === "macro_rates") {
+                    for(const [k,v] of Object.entries(data)) {
+                        if(typeof v !== 'object') continue;
+                        html += `<tr>
+                            <td>${k}</td>
+                            <td class="num-cell">${formatNum(v.latest_yield || v.latest_value)}</td>
+                            <td class="num-cell">${formatNum(v.change_5d || v.move_5d_bps)}</td>
+                            <td class="num-cell">${formatNum(v.change_20d || v.move_20d_bps)}</td>
+                            <td class="num-cell">${formatNum(v.z_score_1y)}</td>
+                            <td>${v.state_label || v.shape_label || '--'}</td>
+                        </tr>`;
+                    }
+                } else if(sec.key === "credit_liquidity") {
+                    for(const [k,v] of Object.entries(data)) {
+                        if(typeof v !== 'object') continue;
+                        html += `<tr>
+                            <td>${k}</td>
+                            <td class="num-cell">${formatNum(v.latest_oas || v.latest_price || v.latest_ratio)}</td>
+                            <td class="num-cell">${formatNum(v.z_score_1y || v.z_score)}</td>
+                            <td>${v.state_label || '--'}</td>
+                            <td>${v.stretch_label || '--'}</td>
+                        </tr>`;
+                    }
+                } else if(sec.key === "equity_index_state") {
+                    for(const [k,v] of Object.entries(data)) {
+                        if(typeof v !== 'object') continue;
+                        html += `<tr>
+                            <td>${k}</td>
+                            <td class="num-cell">${formatNum((v.return_5d||0)*100)}%</td>
+                            <td class="num-cell">${formatNum((v.return_20d||0)*100)}%</td>
+                            <td class="num-cell">${formatNum((v.dist_to_200dma||0)*100)}%</td>
+                            <td class="num-cell">${formatNum(v.z_score_1y)}</td>
+                            <td>${v.trend_state || '--'}</td>
+                            <td>${v.stretch_state || '--'}</td>
+                        </tr>`;
+                    }
+                } else if(sec.key === "sector_state") {
+                    for(const [k,v] of Object.entries(data)) {
+                        if(typeof v !== 'object') continue;
+                        const rel = v.relative_to_spy || {};
+                        html += `<tr>
+                            <td>${k}</td>
+                            <td class="num-cell">${formatNum((rel.return_5d||0)*100)}%</td>
+                            <td class="num-cell">${formatNum((rel.return_20d||0)*100)}%</td>
+                            <td class="num-cell">${formatNum(rel.z_score_1y)}</td>
+                            <td>${v.leadership_flag || '--'}</td>
+                        </tr>`;
+                    }
+                } else if(sec.key === "volatility_stress") {
+                    for(const [k,v] of Object.entries(data)) {
+                        if(typeof v !== 'object' && k.includes("flag")) {
+                            html += `<tr><td>${k}</td><td colspan="3">${v}</td></tr>`;
+                            continue;
+                        } else if(typeof v !== 'object') continue;
+                        html += `<tr>
+                            <td>${k}</td>
+                            <td class="num-cell">${formatNum(v.realized_vol_20d || v.latest_value)}</td>
+                            <td class="num-cell">${formatNum(v.vol_percentile_1y)}</td>
+                            <td>${v.stress_state || v.state_label || '--'}</td>
+                        </tr>`;
+                    }
+                } else if(sec.key === "flight_to_safety") {
+                    for(const [k,v] of Object.entries(data)) {
+                        if(typeof v !== 'object') continue;
+                        html += `<tr>
+                            <td>${k}</td>
+                            <td>${v.state_label || v.leadership_flag || '--'}</td>
+                            <td>${v.stretch_label || '--'}</td>
+                            <td>${v.description || '--'}</td>
+                        </tr>`;
+                    }
+                } else if(sec.key === "cross_asset_relationships") {
+                    for(const [k,v] of Object.entries(data)) {
+                        if(typeof v !== 'object') continue;
+                        html += `<tr>
+                            <td>${k}</td>
+                            <td class="num-cell">${formatNum(v.latest_ratio)}</td>
+                            <td class="num-cell">${formatNum((v.return_5d||0)*100)}%</td>
+                            <td class="num-cell">${formatNum(v.z_score_1y)}</td>
+                            <td>${v.state_label || '--'}</td>
+                        </tr>`;
+                    }
+                } else if(sec.key === "breadth_participation") {
+                    for(const [k,v] of Object.entries(data)) {
+                        let val = v; let pct = "--";
+                        if(typeof v === 'object') {
+                            val = v.count;
+                            if(v.percentage !== undefined) pct = formatNum(v.percentage*100) + "%";
+                        }
+                        html += `<tr>
+                            <td>${k}</td>
+                            <td class="num-cell">${val}</td>
+                            <td class="num-cell">${pct}</td>
+                        </tr>`;
+                    }
+                } else if(sec.key === "positioning_stretch") {
+                    for(const [k,v] of Object.entries(data)) {
+                        if(typeof v !== 'object') continue;
+                        html += `<tr>
+                            <td>${k}</td>
+                            <td class="num-cell">${formatNum(v.rsi_14d)}</td>
+                            <td class="num-cell">${formatNum((v.dist_to_200dma||0)*100)}%</td>
+                            <td>${v.stretch_state || v.stretch_label || '--'}</td>
+                        </tr>`;
+                    }
                 }
-                return data;
-            })
-            .then((data) => {
-                if (!data) return;
-                updateBanner(data);
-                renderSpillover(data);
-                renderPositioning(data);
-                renderSystemicTriggers(data);
-                renderPreview(data);
-                renderCards(data);
-                renderChart(data);
-                renderAlert(data);
-            })
-            .catch((err) => {
-                console.error("Failed to fetch dashboard:", err);
-                renderUnavailable("Failed to fetch dashboard data.");
-            });
+            }
+            html += `</tbody></table></div>`;
+            ctc.innerHTML += html;
+        });
     }
 
-    updateDashboard();
-    setInterval(updateDashboard, 5 * 60 * 1000);
+    function renderAudit(data) {
+        document.getElementById("audit-json").textContent = JSON.stringify(data, null, 2);
+    }
+
+    fetchData();
+    setInterval(fetchData, 60000); // refresh every minute
+
 });
