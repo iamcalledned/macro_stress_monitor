@@ -8,10 +8,10 @@ from typing import Any, Dict, List, Optional
 from flask import Flask, Response, jsonify, render_template
 
 try:
-    from ..services import reader
+    from ..services import reader, render
     from ..storage.redis_client import RedisClient
 except ImportError:  # pragma: no cover - direct script compatibility
-    from services import reader
+    from services import reader, render
     from storage.redis_client import RedisClient
 
 try:
@@ -579,6 +579,57 @@ def create_app():
         if context is None:
             return jsonify({"error": "No market context available"}), 404
         return jsonify(context), 200
+
+    # --- Render Layer API ---
+    @app.route("/api/render/terminal")
+    def api_render_terminal():
+        if redis_client is None:
+            return jsonify({"error": "Redis unavailable"}), 503
+        health = reader.get_health_snapshot(redis_client) or {}
+        struct = reader.get_latest_structural_snapshot(redis_client) or {}
+        prev = reader.get_latest_preview_snapshot(redis_client) or {}
+        ctx = reader.get_latest_market_context(redis_client) or {}
+        payload = render.build_terminal_payload(health, struct, prev, ctx)
+        return jsonify(payload), 200
+
+    @app.route("/api/render/status")
+    def api_render_status():
+        if redis_client is None:
+            return jsonify({"error": "Redis unavailable"}), 503
+        health = reader.get_health_snapshot(redis_client) or {}
+        struct = reader.get_latest_structural_snapshot(redis_client) or {}
+        prev = reader.get_latest_preview_snapshot(redis_client) or {}
+        return jsonify(render.build_status_strip(health, struct, prev)), 200
+
+    @app.route("/api/render/structural")
+    def api_render_structural():
+        if redis_client is None:
+            return jsonify({"error": "Redis unavailable"}), 503
+        struct = reader.get_latest_structural_snapshot(redis_client) or {}
+        return jsonify(render.build_structural_summary(struct)), 200
+
+    @app.route("/api/render/preview")
+    def api_render_preview():
+        if redis_client is None:
+            return jsonify({"error": "Redis unavailable"}), 503
+        prev = reader.get_latest_preview_snapshot(redis_client) or {}
+        return jsonify(render.build_preview_summary(prev)), 200
+
+    @app.route("/api/render/health")
+    def api_render_health_panel():
+        if redis_client is None:
+            return jsonify({"error": "Redis unavailable"}), 503
+        health = reader.get_health_snapshot(redis_client) or {}
+        struct = reader.get_latest_structural_snapshot(redis_client) or {}
+        return jsonify(render.build_health_summary(health, struct)), 200
+
+    @app.route("/api/render/context")
+    def api_render_context():
+        if redis_client is None:
+            return jsonify({"error": "Redis unavailable"}), 503
+        ctx = reader.get_latest_market_context(redis_client) or {}
+        mc_data = ctx.get("market_context", ctx)
+        return jsonify(render.build_market_context(mc_data)), 200
 
     @app.route("/favicon.ico")
     def favicon():
