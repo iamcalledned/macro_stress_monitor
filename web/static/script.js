@@ -234,111 +234,149 @@ document.addEventListener("DOMContentLoaded", () => {
             if(Object.keys(data).length === 0) {
                 html += `<tr><td colspan="${sec.headers.length}">No data available</td></tr>`;
             } else {
+                let rows = [];
+
                 if(sec.key === "macro_rates") {
-                    for(const [k,v] of Object.entries(data)) {
-                        if(typeof v !== 'object') continue;
-                        html += `<tr>
+                    const addRow = (k, v) => {
+                        if(!v) return;
+                        rows.push(`<tr>
                             <td>${k}</td>
-                            <td class="num-cell">${formatNum(v.latest_yield || v.latest_value)}</td>
-                            <td class="num-cell">${formatNum(v.change_5d || v.move_5d_bps)}</td>
-                            <td class="num-cell">${formatNum(v.change_20d || v.move_20d_bps)}</td>
+                            <td class="num-cell">${formatNum(v.latest_bps ?? v.latest)}</td>
+                            <td class="num-cell">${formatNum(v.change_5d_bps ?? v.change_5d)}</td>
+                            <td class="num-cell">${formatNum(v.change_20d_bps ?? v.change_20d)}</td>
                             <td class="num-cell">${formatNum(v.z_score_1y)}</td>
-                            <td>${v.state_label || v.shape_label || '--'}</td>
-                        </tr>`;
-                    }
+                            <td>${v.state || '--'}</td>
+                        </tr>`);
+                    };
+                    if(data.rates) Object.entries(data.rates).forEach(([k,v]) => addRow(k, v));
+                    if(data.curve_spreads) Object.entries(data.curve_spreads).forEach(([k,v]) => addRow(k, v));
+                    if(data.inflation_growth) Object.entries(data.inflation_growth).forEach(([k,v]) => addRow(k, v));
+                    if(data.dollar_proxy?.state) addRow("Dollar (UUP)", data.dollar_proxy.state);
+                    if(data.real_rate_proxy?.state) addRow("Real Rate (10Y-BE)", data.real_rate_proxy.state);
                 } else if(sec.key === "credit_liquidity") {
-                    for(const [k,v] of Object.entries(data)) {
-                        if(typeof v !== 'object') continue;
-                        html += `<tr>
+                    const addRow = (k, v) => {
+                        if(!v) return;
+                        rows.push(`<tr>
                             <td>${k}</td>
-                            <td class="num-cell">${formatNum(v.latest_oas || v.latest_price || v.latest_ratio)}</td>
-                            <td class="num-cell">${formatNum(v.z_score_1y || v.z_score)}</td>
-                            <td>${v.state_label || '--'}</td>
-                            <td>${v.stretch_label || '--'}</td>
-                        </tr>`;
-                    }
+                            <td class="num-cell">${formatNum(v.latest ?? v.latest_ratio ?? v.latest_bps)}</td>
+                            <td class="num-cell">${formatNum(v.z_score_1y ?? v.z_score)}</td>
+                            <td>${v.state || '--'}</td>
+                            <td>${v.stretch_state || '--'}</td>
+                        </tr>`);
+                    };
+                    if(data.ig_oas) addRow("IG OAS", data.ig_oas);
+                    if(data.hy_oas) addRow("HY OAS", data.hy_oas);
+                    if(data.loan_proxy) addRow("Loan Proxy (BKLN)", data.loan_proxy);
+                    if(data.credit_etf_relationships) Object.entries(data.credit_etf_relationships).forEach(([k,v]) => addRow(k, v));
+                    if(data.liquidity_sensitive_proxies) Object.entries(data.liquidity_sensitive_proxies).forEach(([k,v]) => addRow(k, v));
                 } else if(sec.key === "equity_index_state") {
-                    for(const [k,v] of Object.entries(data)) {
-                        if(typeof v !== 'object') continue;
-                        html += `<tr>
+                    Object.entries(data).forEach(([k,v]) => {
+                        if(!v || typeof v !== 'object') return;
+                        rows.push(`<tr>
                             <td>${k}</td>
                             <td class="num-cell">${formatNum((v.return_5d||0)*100)}%</td>
                             <td class="num-cell">${formatNum((v.return_20d||0)*100)}%</td>
-                            <td class="num-cell">${formatNum((v.dist_to_200dma||0)*100)}%</td>
+                            <td class="num-cell">${formatNum((v.distance_200dma||0)*100)}%</td>
                             <td class="num-cell">${formatNum(v.z_score_1y)}</td>
                             <td>${v.trend_state || '--'}</td>
                             <td>${v.stretch_state || '--'}</td>
-                        </tr>`;
-                    }
+                        </tr>`);
+                    });
                 } else if(sec.key === "sector_state") {
-                    for(const [k,v] of Object.entries(data)) {
-                        if(typeof v !== 'object') continue;
+                    Object.entries(data).forEach(([k,v]) => {
+                        if(!v || typeof v !== 'object') return;
                         const rel = v.relative_to_spy || {};
-                        html += `<tr>
+                        rows.push(`<tr>
                             <td>${k}</td>
                             <td class="num-cell">${formatNum((rel.return_5d||0)*100)}%</td>
                             <td class="num-cell">${formatNum((rel.return_20d||0)*100)}%</td>
                             <td class="num-cell">${formatNum(rel.z_score_1y)}</td>
-                            <td>${v.leadership_flag || '--'}</td>
-                        </tr>`;
-                    }
+                            <td>${v.leadership_flag ? "YES" : (v.laggard_flag ? "LAG" : "--")}</td>
+                        </tr>`);
+                    });
                 } else if(sec.key === "volatility_stress") {
-                    for(const [k,v] of Object.entries(data)) {
-                        if(typeof v !== 'object' && k.includes("flag")) {
-                            html += `<tr><td>${k}</td><td colspan="3">${v}</td></tr>`;
-                            continue;
-                        } else if(typeof v !== 'object') continue;
-                        html += `<tr>
+                    const addRow = (k, v) => {
+                        if(!v) return;
+                        rows.push(`<tr>
                             <td>${k}</td>
-                            <td class="num-cell">${formatNum(v.realized_vol_20d || v.latest_value)}</td>
-                            <td class="num-cell">${formatNum(v.vol_percentile_1y)}</td>
-                            <td>${v.stress_state || v.state_label || '--'}</td>
-                        </tr>`;
+                            <td class="num-cell">${formatNum(v.realized_vol_20d)}</td>
+                            <td class="num-cell">${formatNum(v.realized_vol_percentile_1y)}</td>
+                            <td>${v.vol_state || v.trend_state || '--'}</td>
+                        </tr>`);
+                    };
+                    if(data.vix_proxy?.state) addRow("VIX Proxy (VIXY)", data.vix_proxy.state);
+                    if(data.move_proxy?.state) addRow("MOVE Proxy (TLT Vol)", data.move_proxy.state);
+                    if(data.realized_volatility) Object.entries(data.realized_volatility).forEach(([k,v]) => addRow(k, v));
+                    if(data.stress_flags) {
+                        Object.entries(data.stress_flags).forEach(([k,v]) => {
+                            rows.push(`<tr><td>${k}</td><td class="num-cell">--</td><td class="num-cell">--</td><td>${v ? "TRIGGERED" : "OK"}</td></tr>`);
+                        });
                     }
                 } else if(sec.key === "flight_to_safety") {
-                    for(const [k,v] of Object.entries(data)) {
-                        if(typeof v !== 'object') continue;
-                        html += `<tr>
+                    const addRow = (k, v) => {
+                        if(!v) return;
+                        rows.push(`<tr>
                             <td>${k}</td>
-                            <td>${v.state_label || v.leadership_flag || '--'}</td>
-                            <td>${v.stretch_label || '--'}</td>
-                            <td>${v.description || '--'}</td>
-                        </tr>`;
-                    }
+                            <td>${v.state || v.trend_state || '--'}</td>
+                            <td>${v.stretch_state || '--'}</td>
+                            <td>--</td>
+                        </tr>`);
+                    };
+                    if(data.treasury_proxies) Object.entries(data.treasury_proxies).forEach(([k,v]) => addRow(k, v));
+                    if(data.gold_proxy) addRow("Gold Proxy (GLD)", data.gold_proxy);
+                    if(data.dollar_proxy) addRow("Dollar Proxy (UUP)", data.dollar_proxy);
+                    if(data.jpy_proxy) addRow("JPY Proxy", data.jpy_proxy);
+                    if(data.defensive_vs_cyclical) Object.entries(data.defensive_vs_cyclical).forEach(([k,v]) => addRow(k, v));
                 } else if(sec.key === "cross_asset_relationships") {
-                    for(const [k,v] of Object.entries(data)) {
-                        if(typeof v !== 'object') continue;
-                        html += `<tr>
+                    Object.entries(data).forEach(([k,v]) => {
+                        if(!v || typeof v !== 'object') return;
+                        rows.push(`<tr>
                             <td>${k}</td>
                             <td class="num-cell">${formatNum(v.latest_ratio)}</td>
                             <td class="num-cell">${formatNum((v.return_5d||0)*100)}%</td>
                             <td class="num-cell">${formatNum(v.z_score_1y)}</td>
-                            <td>${v.state_label || '--'}</td>
-                        </tr>`;
-                    }
+                            <td>${v.state || '--'}</td>
+                        </tr>`);
+                    });
                 } else if(sec.key === "breadth_participation") {
-                    for(const [k,v] of Object.entries(data)) {
-                        let val = v; let pct = "--";
-                        if(typeof v === 'object') {
-                            val = v.count;
-                            if(v.percentage !== undefined) pct = formatNum(v.percentage*100) + "%";
-                        }
-                        html += `<tr>
+                    const addRow = (k, v, pct) => {
+                        rows.push(`<tr>
                             <td>${k}</td>
-                            <td class="num-cell">${val}</td>
+                            <td class="num-cell">${v}</td>
                             <td class="num-cell">${pct}</td>
-                        </tr>`;
-                    }
+                        </tr>`);
+                    };
+                    if(data.tracked_count !== undefined) addRow("Tracked ETFs", data.tracked_count, "--");
+                    if(data.above_50dma_count !== undefined) addRow("Above 50DMA", data.above_50dma_count, formatNum((data.above_50dma_pct||0)*100)+"%");
+                    if(data.above_200dma_count !== undefined) addRow("Above 200DMA", data.above_200dma_count, formatNum((data.above_200dma_pct||0)*100)+"%");
+                    if(data.positive_20d_trend_count !== undefined) addRow("Pos 20d Trend", data.positive_20d_trend_count, formatNum((data.positive_20d_trend_pct||0)*100)+"%");
+                    if(data.sectors_above_50dma_count !== undefined) addRow("Sectors Above 50DMA", data.sectors_above_50dma_count, "--");
+                    if(data.sectors_above_200dma_count !== undefined) addRow("Sectors Above 200DMA", data.sectors_above_200dma_count, "--");
                 } else if(sec.key === "positioning_stretch") {
-                    for(const [k,v] of Object.entries(data)) {
-                        if(typeof v !== 'object') continue;
-                        html += `<tr>
+                    if(data.assets) Object.entries(data.assets).forEach(([k,v]) => {
+                        if(!v) return;
+                        rows.push(`<tr>
                             <td>${k}</td>
                             <td class="num-cell">${formatNum(v.rsi_14d)}</td>
-                            <td class="num-cell">${formatNum((v.dist_to_200dma||0)*100)}%</td>
-                            <td>${v.stretch_state || v.stretch_label || '--'}</td>
-                        </tr>`;
-                    }
+                            <td class="num-cell">${formatNum((v.distance_200dma||0)*100)}%</td>
+                            <td>${v.stretch_state || '--'}</td>
+                        </tr>`);
+                    });
+                    if(data.relationships) Object.entries(data.relationships).forEach(([k,v]) => {
+                        if(!v) return;
+                        rows.push(`<tr>
+                            <td>${k}</td>
+                            <td class="num-cell">--</td>
+                            <td class="num-cell">${formatNum((v.distance_50dma||0)*100)}%</td>
+                            <td>${v.stretch_state || '--'}</td>
+                        </tr>`);
+                    });
+                }
+
+                if(rows.length === 0) {
+                    html += `<tr><td colspan="${sec.headers.length}">No data available</td></tr>`;
+                } else {
+                    html += rows.join("");
                 }
             }
             html += `</tbody></table></div>`;
