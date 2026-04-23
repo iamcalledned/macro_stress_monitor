@@ -199,8 +199,9 @@ document.addEventListener("DOMContentLoaded", () => {
         dList.innerHTML = dHtml;
 
         // Market Context
-        if(ctx && ctx.market_context && !ctx.error) {
-            renderContext(ctx.market_context);
+        const mc = (ctx && ctx.market_context) ? ctx.market_context : ctx;
+        if(mc && Object.keys(mc).length > 0 && !mc.error) {
+            renderContext(mc);
         } else {
             document.getElementById("context-content").innerHTML = "<div class='panel-content'>Context data unavailable.</div>";
         }
