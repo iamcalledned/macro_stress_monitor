@@ -16,7 +16,7 @@ def generate_completion(system_prompt: str, user_prompt: str, temperature: float
         return {"success": False, "error": "LLM is disabled via MSM_LLM_ENABLED.", "meta": {}}
         
     base_url = os.getenv("MSM_LLM_BASE_URL", "http://127.0.0.1:30000/v1").rstrip("/")
-    model = os.getenv("MSM_LLM_MODEL", "Qwen2.5-14B-Instruct-AWQ")
+    model = os.getenv("MSM_LLM_MODEL", "Qwen/Qwen2.5-14B-Instruct-AWQ")
     timeout = int(os.getenv("MSM_LLM_TIMEOUT_SECONDS", "60"))
     
     endpoint = f"{base_url}/chat/completions"
