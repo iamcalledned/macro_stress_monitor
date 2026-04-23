@@ -16,6 +16,11 @@
             <div class="strip-section right">STRUC: <span id="ts-struc-time">--</span> | PREV: <span id="ts-prev-time">--</span></div>
         </header>
 
+        <!-- The Ticker / Headline -->
+        <div class="ticker-strip" style="background-color: var(--panel-bg); border-bottom: 1px solid var(--border-color); padding: 8px 12px; font-weight: bold; font-size: 13px;">
+            > <span id="brief-headline">--</span>
+        </div>
+
         <div class="grid-main">
             <!-- Left Column: Summaries & Health -->
             <div class="col-left">
@@ -72,6 +77,33 @@
 
             <!-- Right Column: Market Context Navigator -->
             <div class="col-right">
+                
+                <!-- 0. THE BRIEF (Interpretation Layer) -->
+                <section class="panel" style="margin-bottom: 8px;">
+                    <div class="panel-header">THE BRIEF</div>
+                    <div class="panel-content">
+                        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                            <div style="flex: 1; min-width: 250px;">
+                                <div style="color: var(--text-muted); font-size: 11px; margin-bottom: 4px;">TOP RISKS / WATCH ITEMS</div>
+                                <ul id="brief-risks" style="margin: 0; padding-left: 0; list-style-type: none; font-size: 12px;">
+                                    <li>--</li>
+                                </ul>
+                            </div>
+                            <div style="flex: 1; min-width: 250px;">
+                                <div style="color: var(--text-muted); font-size: 11px; margin-bottom: 4px;">TOP SUPPORTS / CONFIRMATIONS</div>
+                                <ul id="brief-supports" style="margin: 0; padding-left: 0; list-style-type: none; font-size: 12px;">
+                                    <li>--</li>
+                                </ul>
+                            </div>
+                            <div style="flex: 1; min-width: 200px;">
+                                <div style="color: var(--text-muted); font-size: 11px; margin-bottom: 4px;">ALIGNMENT / CAVEATS</div>
+                                <ul id="brief-caveats" style="margin: 0; padding-left: 0; list-style-type: none; font-size: 12px;">
+                                    <li>--</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </section>
                 <div style="display: flex; flex: 1; gap: 4px; min-height: 0;">
                     <!-- 5. Market context navigator -->
                     <section class="panel flex-panel" style="flex: 3;">

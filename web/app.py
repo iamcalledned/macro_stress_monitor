@@ -8,10 +8,10 @@ from typing import Any, Dict, List, Optional
 from flask import Flask, Response, jsonify, render_template
 
 try:
-    from ..services import reader, render
+    from ..services import reader, render, briefs, comparisons, alerts
     from ..storage.redis_client import RedisClient
 except ImportError:  # pragma: no cover - direct script compatibility
-    from services import reader, render
+    from services import reader, render, briefs, comparisons, alerts
     from storage.redis_client import RedisClient
 
 try:
@@ -630,6 +630,35 @@ def create_app():
         ctx = reader.get_latest_market_context(redis_client) or {}
         mc_data = ctx.get("market_context", ctx)
         return jsonify(render.build_market_context_bindings(mc_data)), 200
+
+    # --- Interpretation API ---
+    @app.route("/api/brief/current")
+    def api_brief_current():
+        if redis_client is None:
+            return jsonify({"error": "Redis unavailable"}), 503
+        health = reader.get_health_snapshot(redis_client) or {}
+        struct = reader.get_latest_structural_snapshot(redis_client) or {}
+        prev = reader.get_latest_preview_snapshot(redis_client) or {}
+        ctx = reader.get_latest_market_context(redis_client) or {}
+        return jsonify(briefs.build_current_state_brief(health, struct, prev, ctx)), 200
+
+    @app.route("/api/brief/compare")
+    def api_brief_compare():
+        if redis_client is None:
+            return jsonify({"error": "Redis unavailable"}), 503
+        struct = reader.get_latest_structural_snapshot(redis_client) or {}
+        prev = reader.get_latest_preview_snapshot(redis_client) or {}
+        return jsonify(comparisons.compare_structural_vs_preview(struct, prev)), 200
+
+    @app.route("/api/brief/alerts")
+    def api_brief_alerts():
+        if redis_client is None:
+            return jsonify({"error": "Redis unavailable"}), 503
+        health = reader.get_health_snapshot(redis_client) or {}
+        struct = reader.get_latest_structural_snapshot(redis_client) or {}
+        prev = reader.get_latest_preview_snapshot(redis_client) or {}
+        ctx = reader.get_latest_market_context(redis_client) or {}
+        return jsonify(alerts.build_alert_summary(health, struct, prev, ctx)), 200
 
     @app.route("/favicon.ico")
     def favicon():

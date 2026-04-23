@@ -16,6 +16,13 @@ from .render_helpers import (
     class_from_state,
 )
 
+try:
+    from .briefs import build_current_state_brief
+    from .comparisons import compare_structural_vs_preview
+except ImportError:
+    from services.briefs import build_current_state_brief
+    from services.comparisons import compare_structural_vs_preview
+
 def _get_brain_hooks() -> Dict[str, Any]:
     return {
         "headline_slot": None,
@@ -388,6 +395,44 @@ def build_market_context_bindings(mc: Dict[str, Any]) -> List[Dict[str, Any]]:
         _bind("context-content", html=panels_html)
     ]
 
+def build_brief_bindings(health: Dict[str, Any], struct: Dict[str, Any], prev: Dict[str, Any], context: Dict[str, Any]) -> List[Dict[str, Any]]:
+    b = []
+    mc_data = context.get("market_context", context)
+    brief = build_current_state_brief(health, struct, prev, mc_data)
+    
+    if brief.get("error"):
+        b.append(_bind("brief-headline", text="Brief unavailable: " + brief["error"]))
+        return b
+        
+    b.append(_bind("brief-headline", text=brief.get("headline", "--")))
+    
+    # Risks
+    risks_html = ""
+    for r in brief.get("top_risks", []) + brief.get("watch_items", []):
+        sev_color = "color-red" if r.get("severity") in ("warning", "critical") else "color-orange"
+        risks_html += f'<li style="margin-bottom: 4px;"><span class="{sev_color}">■</span> <b>{r.get("title", "")}</b>: <span class="color-muted">{r.get("reason", "")}</span></li>'
+    if not risks_html: risks_html = "<li>No immediate risks identified</li>"
+    b.append(_bind("brief-risks", html=risks_html))
+    
+    # Supports
+    supp_html = ""
+    for s in brief.get("top_supports", []):
+        supp_html += f'<li style="margin-bottom: 4px;"><span class="color-green">■</span> <b>{s.get("title", "")}</b>: <span class="color-muted">{s.get("reason", "")}</span></li>'
+    if not supp_html: supp_html = "<li>No distinct supports identified</li>"
+    b.append(_bind("brief-supports", html=supp_html))
+    
+    # Caveats & Alignment
+    cav_html = ""
+    comp = compare_structural_vs_preview(struct, prev)
+    align_color = "color-green" if comp.get("alignment") == "aligned" else ("color-red" if comp.get("alignment") == "diverging" else "color-orange")
+    cav_html += f'<li style="margin-bottom: 4px;"><span class="{align_color}">■</span> <b>Alignment</b>: <span class="color-muted">{comp.get("alignment", "unknown").upper()}</span></li>'
+    
+    for c in brief.get("caveats", []):
+        cav_html += f'<li style="margin-bottom: 4px;"><span class="color-orange">⚠</span> <span class="color-muted">{c}</span></li>'
+    b.append(_bind("brief-caveats", html=cav_html))
+    
+    return b
+
 def build_terminal_payload(
     health: Dict[str, Any],
     struct: Dict[str, Any],
@@ -404,6 +449,7 @@ def build_terminal_payload(
     
     mc_data = context.get("market_context", context)
     bindings.extend(build_market_context_bindings(mc_data))
+    bindings.extend(build_brief_bindings(health, struct, prev, context))
     
     return {
         "bindings": bindings,

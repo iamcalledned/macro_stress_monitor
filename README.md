@@ -50,9 +50,28 @@ The monitor is designed as a state-producing engine:
 5. Job modules orchestrate structural and preview updates.
 6. Redis stores latest state, history, run snapshots, and health.
 7. Reader/health/delta services provide stable read and comparison helpers.
-8. The Flask app serves dashboard/API consumers.
+8. **Interpretation Layer ("Brain Stem")**: Deterministically builds briefs, comparisons, alerts, and prioritizations from the stored state.
+9. The Flask app serves dashboard/API consumers with normalized DOM bindings and interpretation payloads.
 
 Redis snapshots are the durable handoff between this foundation and every higher layer.
+
+## Deterministic Interpretation Layer ("Brain Stem")
+
+The system now includes an intermediate interpretation layer situated between the raw data foundation and the future "brain" (LLM) layer. 
+
+**What it does:**
+- Identifies and ranks dominant market factors, top risks, and supports (`prioritization.py`).
+- Deterministically compares intraday preview signals against structural regimes to highlight divergence (`comparisons.py`).
+- Generates factual, context-aware headlines and current-state briefs without hallucination (`briefs.py`).
+- Flags critical data quality gaps and stale data caveats (`caveats.py`).
+- Surfaces watch items based on cross-asset relationships (`alerts.py`).
+
+**What it does NOT do:**
+- It does not fetch live data. It relies purely on the stored structural and preview snapshots.
+- It is not an LLM. All text is deterministically generated based on strict rules and state-matching.
+- It does not invent facts or narrative.
+
+The outputs of this layer are available natively in the UI's "The Brief" panel, and programmatically via `/api/brief/current`, `/api/brief/compare`, and `/api/brief/alerts`.
 
 ## Update Modes
 
