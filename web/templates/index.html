@@ -22,48 +22,39 @@
         </div>
 
         <div class="upper-row">
-            <!-- 3. Structural summary panel -->
-            <section class="panel">
-                <div class="panel-header">STRUCTURAL</div>
-                <div class="panel-content" style="text-align: center; padding: 4px;">
-                    <div class="big-score" id="ss-score" style="font-size: 24px;">--</div>
-                    <div class="summary-line" id="ss-regime" style="font-size: 14px; margin-bottom: 4px; text-transform: uppercase;">CALM</div>
-                    <div style="font-size: 10px; margin-bottom: 2px; color: var(--text-muted);">PRIMARY: <span id="ss-drivers" class="val-neutral" style="font-weight: bold; color: var(--text-main);">--</span></div>
-                    <div style="font-size: 10px; color: var(--text-muted);">DELTA: <span id="ss-delta" class="val-neutral" style="font-weight: bold; color: var(--text-main);">--</span></div>
-                </div>
-            </section>
-
-            <!-- 4. Preview summary panel -->
-            <section class="panel">
-                <div class="panel-header">PREVIEW</div>
-                <div class="panel-content">
-                    <div class="summary-line" id="ps-assessment" style="margin-bottom: 4px;">Loading...</div>
-                    <table class="dense-table prop-table" id="ps-components">
-                        <!-- populated by js -->
-                    </table>
-                    <table class="dense-table prop-table" style="margin-top: 4px;">
-                        <tr><td>Session</td><td id="ps-session">--</td></tr>
-                        <tr><td>Delta vs Prior</td><td id="ps-delta">--</td></tr>
-                    </table>
-                </div>
-            </section>
-
-            <!-- 2. Health and execution panel -->
-            <section class="panel">
-                <div class="panel-header">HEALTH</div>
-                <div class="panel-content">
-                    <table class="dense-table prop-table">
-                        <tr><td>CRITICAL</td><td id="hl-missing-crit" style="font-weight:bold;">--</td></tr>
-                        <tr><td>NON-CRIT</td><td id="hl-missing-noncrit" style="font-weight:bold;">--</td></tr>
-                        <tr><td>STRUC AGE</td><td id="hl-struc-age" style="font-weight:bold;">--</td></tr>
-                        <tr><td>PREV AGE</td><td id="hl-prev-age" style="font-weight:bold;">--</td></tr>
-                        <tr><td>EXEC TIME</td><td id="hl-exec" style="font-weight:bold;">--</td></tr>
-                    </table>
+            <!-- Combined Structural & Preview Panel -->
+            <section class="panel" style="flex: 1; min-width: 250px;">
+                <div class="panel-header">CORE STATE</div>
+                <div class="panel-content" style="padding: 4px; display: flex; flex-direction: column; justify-content: space-between; height: 100%;">
+                    <!-- Structural -->
+                    <div style="text-align: center; border-bottom: 1px solid var(--border-color); padding-bottom: 6px; margin-bottom: 4px;">
+                        <div style="display: flex; justify-content: center; align-items: baseline; gap: 8px;">
+                            <div class="big-score" id="ss-score" style="font-size: 24px; line-height: 1;">--</div>
+                            <div class="summary-line" id="ss-regime" style="font-size: 14px; text-transform: uppercase;">CALM</div>
+                        </div>
+                        <div style="font-size: 10px; margin-top: 4px; color: var(--text-muted);">
+                            PRIMARY: <span id="ss-drivers" class="val-neutral" style="font-weight: bold; color: var(--text-main);">--</span>
+                            | DELTA: <span id="ss-delta" class="val-neutral" style="font-weight: bold; color: var(--text-main);">--</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Preview -->
+                    <div style="text-align: center; display: flex; flex-direction: column; flex: 1;">
+                        <div id="ps-assessment" style="font-weight: bold; margin-bottom: 2px; color: var(--color-orange);">--</div>
+                        <div style="font-size: 9px; color: var(--text-muted); margin-bottom: 4px;">
+                            Session: <span id="ps-session" style="color: var(--text-main);">--</span> | Delta: <span id="ps-delta" style="color: var(--text-main);">--</span>
+                        </div>
+                        <div style="flex: 1; overflow-y: auto; max-height: 150px;">
+                            <table class="dense-table prop-table" id="ps-components" style="width: 100%;">
+                                <!-- populated by js -->
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </section>
             
             <!-- LLM INTELLIGENCE -->
-            <section class="panel" style="flex: 2;">
+            <section class="panel" style="flex: 3;">
                 <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center;">
                     <span>LLM INTELLIGENCE (LOCAL)</span>
                 </div>
