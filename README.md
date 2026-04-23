@@ -592,8 +592,11 @@ Environment overrides:
 - `MSM_PREVIEW_STALE_AFTER_SECONDS`: preview stale threshold, default `28800`
 - `MSM_NO_NETWORK_MOCK`: use deterministic local mock data when set truthy
 
-### LLM Intelligence Configuration
+### LLM Intelligence & Human Translation
 The system uses a local OpenAI-compatible vLLM server to generate plain-English Morning Briefs and Evening Wraps based *strictly* on the deterministic structural/preview snapshots.
+
+**Signal Translation Layer**: 
+Before the LLM is called, internal system signals (e.g., "multi-asset divergence" or "preview diverges from structural") are processed through `macro_stress_monitor/services/signal_translation.py`. This layer translates deterministic system jargon into plain-English "human meaning packets". The LLM is then fed these translated packets and acts purely as a summarizer and editor, rather than being forced to guess at interpretations. This drastically improves human readability without weakening data guardrails.
 
 - `MSM_LLM_ENABLED`: enable/disable LLM features, default `true`
 - `MSM_LLM_BASE_URL`: local vLLM API URL, default `http://127.0.0.1:30000/v1`
