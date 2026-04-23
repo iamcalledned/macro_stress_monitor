@@ -8,10 +8,10 @@ from typing import Any, Dict, List, Optional
 from flask import Flask, Response, jsonify, render_template
 
 try:
-    from ..services import reader, render, briefs, comparisons, alerts
+    from ..services import reader, render, briefs, comparisons, alerts, llm_briefs
     from ..storage.redis_client import RedisClient
 except ImportError:  # pragma: no cover - direct script compatibility
-    from services import reader, render, briefs, comparisons, alerts
+    from services import reader, render, briefs, comparisons, alerts, llm_briefs
     from storage.redis_client import RedisClient
 
 try:
@@ -659,6 +659,25 @@ def create_app():
         prev = reader.get_latest_preview_snapshot(redis_client) or {}
         ctx = reader.get_latest_market_context(redis_client) or {}
         return jsonify(alerts.build_alert_summary(health, struct, prev, ctx)), 200
+
+    # --- LLM Summary API ---
+    @app.route("/api/brief/morning")
+    def api_llm_morning_brief():
+        brief = llm_briefs.get_cached_morning_brief()
+        return jsonify(brief or {"error": "No morning brief cached."}), 200 if brief else 404
+
+    @app.route("/api/brief/morning/generate", methods=["POST"])
+    def api_llm_morning_brief_generate():
+        return jsonify(llm_briefs.generate_morning_brief()), 200
+
+    @app.route("/api/brief/evening")
+    def api_llm_evening_wrap():
+        wrap = llm_briefs.get_cached_evening_wrap()
+        return jsonify(wrap or {"error": "No evening wrap cached."}), 200 if wrap else 404
+
+    @app.route("/api/brief/evening/generate", methods=["POST"])
+    def api_llm_evening_wrap_generate():
+        return jsonify(llm_briefs.generate_evening_wrap()), 200
 
     @app.route("/favicon.ico")
     def favicon():

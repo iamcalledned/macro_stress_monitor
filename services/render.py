@@ -19,9 +19,11 @@ from .render_helpers import (
 try:
     from .briefs import build_current_state_brief
     from .comparisons import compare_structural_vs_preview
+    from .llm_briefs import get_cached_morning_brief, get_cached_evening_wrap
 except ImportError:
     from services.briefs import build_current_state_brief
     from services.comparisons import compare_structural_vs_preview
+    from services.llm_briefs import get_cached_morning_brief, get_cached_evening_wrap
 
 def _get_brain_hooks() -> Dict[str, Any]:
     return {
@@ -433,6 +435,55 @@ def build_brief_bindings(health: Dict[str, Any], struct: Dict[str, Any], prev: D
     
     return b
 
+def _format_llm_brief_html(brief: Dict[str, Any]) -> str:
+    if "error" in brief:
+        return f'<div class="color-red">Error: {brief["error"]}</div>'
+    
+    html = ""
+    sections = brief.get("sections", {})
+    if "overall" in sections:
+        html += f'<div style="margin-bottom: 8px;">{sections["overall"]}</div>'
+        
+    for key in ["what_matters", "risks", "supports", "watch_next", "caveats"]:
+        items = sections.get(key, [])
+        if items:
+            title = key.replace("_", " ").upper()
+            html += f'<div style="color: var(--text-main); font-weight: bold; margin-top: 6px;">{title}</div>'
+            html += '<ul style="margin: 2px 0 8px 0; padding-left: 16px;">'
+            for item in items:
+                html += f'<li>{item}</li>'
+            html += '</ul>'
+            
+    if "structural_vs_preview" in sections:
+        html += f'<div style="color: var(--text-main); font-weight: bold; margin-top: 6px;">ALIGNMENT</div>'
+        html += f'<div style="margin-bottom: 8px;">{sections["structural_vs_preview"]}</div>'
+        
+    if not html:
+        html = f'<pre style="white-space: pre-wrap;">{brief.get("raw_text", "Empty response.")}</pre>'
+        
+    return html
+
+def build_llm_intelligence_bindings() -> List[Dict[str, Any]]:
+    b = []
+    
+    # Morning Brief
+    mb = get_cached_morning_brief()
+    if mb:
+        b.append(_bind("llm-morning-content", html=_format_llm_brief_html(mb)))
+        b.append(_bind("llm-morning-meta", text=f"Generated: {mb.get('generated_at_utc', '--')} | Struct: {mb.get('source_run_ids', {}).get('structural', '--')[:8]}"))
+    else:
+        b.append(_bind("llm-morning-content", text="No cached morning brief. Click [GENERATE] to build one."))
+        
+    # Evening Wrap
+    ew = get_cached_evening_wrap()
+    if ew:
+        b.append(_bind("llm-evening-content", html=_format_llm_brief_html(ew)))
+        b.append(_bind("llm-evening-meta", text=f"Generated: {ew.get('generated_at_utc', '--')} | Struct: {ew.get('source_run_ids', {}).get('structural', '--')[:8]}"))
+    else:
+        b.append(_bind("llm-evening-content", text="No cached evening wrap. Click [GENERATE] to build one."))
+        
+    return b
+
 def build_terminal_payload(
     health: Dict[str, Any],
     struct: Dict[str, Any],
@@ -450,6 +501,7 @@ def build_terminal_payload(
     mc_data = context.get("market_context", context)
     bindings.extend(build_market_context_bindings(mc_data))
     bindings.extend(build_brief_bindings(health, struct, prev, context))
+    bindings.extend(build_llm_intelligence_bindings())
     
     return {
         "bindings": bindings,

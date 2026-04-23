@@ -592,6 +592,18 @@ Environment overrides:
 - `MSM_PREVIEW_STALE_AFTER_SECONDS`: preview stale threshold, default `28800`
 - `MSM_NO_NETWORK_MOCK`: use deterministic local mock data when set truthy
 
+### LLM Intelligence Configuration
+The system uses a local OpenAI-compatible vLLM server to generate plain-English Morning Briefs and Evening Wraps based *strictly* on the deterministic structural/preview snapshots.
+
+- `MSM_LLM_ENABLED`: enable/disable LLM features, default `true`
+- `MSM_LLM_BASE_URL`: local vLLM API URL, default `http://127.0.0.1:30000/v1`
+- `MSM_LLM_MODEL`: model name, default `Qwen2.5-14B-Instruct-AWQ`
+- `MSM_LLM_TIMEOUT_SECONDS`: request timeout, default `60`
+
+The LLM outputs are cached in Redis:
+- `msm:brief:morning:latest`
+- `msm:brief:evening:latest`
+
 ## Health Record
 
 Stored at:
@@ -699,13 +711,24 @@ Foundation endpoints:
 - `/api/macro/preview`
 - `/api/macro/context`
 
+Render Layer API:
+
+- `/api/render/terminal` (the master composite rendering payload)
+
+Interpretation API:
+
+- `/api/brief/current`
+- `/api/brief/compare`
+- `/api/brief/alerts`
+
 ## Terminal Operator Interface
 
-The frontend (`macro_stress_monitor/web/`) has been fully re-architected into a high-density, Bloomberg-inspired operator console. It entirely avoids generic dashboard components in favor of an unapologetically serious, tabular inspection layout.
+The frontend (`macro_stress_monitor/web/`) has been fully re-architected into a high-density, Bloomberg-inspired operator console. It avoids generic dashboard components in favor of an unapologetically serious, tabular inspection layout.
 
 Key features:
-- **Zero External Dependencies:** Built with pure vanilla HTML/JS/CSS.
-- **Direct Foundation Access:** Bypasses legacy aggregate endpoints, fetching directly from `/api/health`, `/api/macro/latest`, `/api/macro/preview`, and `/api/macro/context`.
+- **Dumb Rendering Pipeline:** The Javascript frontend contains zero conditional logic. It blindly consumes explicit DOM bindings (`id`, `text`, `class_name`, `html`) from the Python backend via a single unified payload (`/api/render/terminal`).
+- **Deterministic Briefing ("The Brief"):** Incorporates deterministic interpretation of structural regimes versus intraday previews, presenting Top Risks, Top Supports, Alignment, and factual Caveats directly into the UI.
+- **LLM Intelligence (Local):** Generates and caches structured "Morning Brief" and "Evening Wrap" reports using a disciplined local vLLM, explicitly preventing hallucination or trade advice.
 - **Market Context Navigator:** Explodes the deep `market_context` data into 9 dense data grids (Macro/Rates, Credit, Equity, Sectors, Volatility, Safety, Cross-Asset, Breadth, Positioning).
 - **Signal-First Styling:** Deep black backgrounds, monospaced typography, and hard neon color coding (Red/Yellow/Green) for explicit anomaly and state scanning.
 - **Audit Drilldown:** An integrated raw JSON drilldown allows operators to inspect the unvarnished payload backing the interface at any time.

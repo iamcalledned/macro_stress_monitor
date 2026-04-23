@@ -49,18 +49,57 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    // Toggle Audit
+    function setupLlmGenerators() {
+        const btnMorning = document.getElementById("btn-gen-morning");
+        const btnEvening = document.getElementById("btn-gen-evening");
+        
+        if (btnMorning) {
+            btnMorning.addEventListener("click", async () => {
+                btnMorning.textContent = "[WAIT...]";
+                try {
+                    const res = await fetch("/api/brief/morning/generate", {method: "POST"});
+                    if (!res.ok) throw new Error("Failed to generate");
+                    await fetchData(); // Reload UI
+                } catch(err) {
+                    alert("Error generating Morning Brief: " + err);
+                } finally {
+                    btnMorning.textContent = "[GENERATE]";
+                }
+            });
+        }
+        
+        if (btnEvening) {
+            btnEvening.addEventListener("click", async () => {
+                btnEvening.textContent = "[WAIT...]";
+                try {
+                    const res = await fetch("/api/brief/evening/generate", {method: "POST"});
+                    if (!res.ok) throw new Error("Failed to generate");
+                    await fetchData(); // Reload UI
+                } catch(err) {
+                    alert("Error generating Evening Wrap: " + err);
+                } finally {
+                    btnEvening.textContent = "[GENERATE]";
+                }
+            });
+        }
+    }
+
+    // Toggle audit panel
     const auditToggle = document.getElementById("audit-toggle");
-    const auditContent = document.getElementById("audit-content");
-    if(auditToggle && auditContent) {
+    if(auditToggle) {
         auditToggle.addEventListener("click", () => {
-            auditContent.classList.toggle("hidden");
-            auditToggle.textContent = auditContent.classList.contains("hidden") 
-                ? "RAW AUDIT DRILLDOWN [+]" 
-                : "RAW AUDIT DRILLDOWN [-]";
+            const content = document.getElementById("audit-content");
+            if(content.classList.contains("hidden")) {
+                content.classList.remove("hidden");
+                auditToggle.textContent = "RAW AUDIT DRILLDOWN [-]";
+            } else {
+                content.classList.add("hidden");
+                auditToggle.textContent = "RAW AUDIT DRILLDOWN [+]";
+            }
         });
     }
 
+    setupLlmGenerators();
     fetchData();
     setInterval(fetchData, 60000); // refresh every minute
 
