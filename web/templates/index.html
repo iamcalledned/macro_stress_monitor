@@ -21,46 +21,130 @@
             > <span id="brief-headline">--</span>
         </div>
 
-        <div class="grid-main">
-            <!-- Left Column: Summaries & Health -->
-            <div class="col-left">
-                <!-- 3. Structural summary panel -->
-                <section class="panel">
-                    <div class="panel-header">STRUCTURAL SUMMARY</div>
-                    <div class="panel-content" style="text-align: center; padding: 12px 4px;">
-                        <div class="big-score" id="ss-score">--</div>
-                        <div class="summary-line" id="ss-regime" style="font-size: 16px; margin-bottom: 12px; text-transform: uppercase;">CALM</div>
-                        <div style="font-size: 11px; margin-bottom: 4px; color: var(--text-muted);">PRIMARY: <span id="ss-drivers" class="val-neutral" style="font-weight: bold; color: var(--text-main);">--</span></div>
-                        <div style="font-size: 11px; color: var(--text-muted);">DELTA: <span id="ss-delta" class="val-neutral" style="font-weight: bold; color: var(--text-main);">--</span></div>
-                    </div>
-                </section>
+        <div class="upper-row">
+            <!-- 3. Structural summary panel -->
+            <section class="panel">
+                <div class="panel-header">STRUCTURAL</div>
+                <div class="panel-content" style="text-align: center; padding: 4px;">
+                    <div class="big-score" id="ss-score" style="font-size: 24px;">--</div>
+                    <div class="summary-line" id="ss-regime" style="font-size: 14px; margin-bottom: 4px; text-transform: uppercase;">CALM</div>
+                    <div style="font-size: 10px; margin-bottom: 2px; color: var(--text-muted);">PRIMARY: <span id="ss-drivers" class="val-neutral" style="font-weight: bold; color: var(--text-main);">--</span></div>
+                    <div style="font-size: 10px; color: var(--text-muted);">DELTA: <span id="ss-delta" class="val-neutral" style="font-weight: bold; color: var(--text-main);">--</span></div>
+                </div>
+            </section>
 
-                <!-- 4. Preview summary panel -->
-                <section class="panel">
-                    <div class="panel-header">PREVIEW SUMMARY</div>
-                    <div class="panel-content">
-                        <div class="summary-line" id="ps-assessment">Loading...</div>
-                        <table class="dense-table prop-table" id="ps-components">
-                            <!-- populated by js -->
-                        </table>
-                        <table class="dense-table prop-table" style="margin-top: 8px;">
-                            <tr><td>Session</td><td id="ps-session">--</td></tr>
-                            <tr><td>Delta vs Prior</td><td id="ps-delta">--</td></tr>
-                        </table>
-                    </div>
-                </section>
+            <!-- 4. Preview summary panel -->
+            <section class="panel">
+                <div class="panel-header">PREVIEW</div>
+                <div class="panel-content">
+                    <div class="summary-line" id="ps-assessment" style="margin-bottom: 4px;">Loading...</div>
+                    <table class="dense-table prop-table" id="ps-components">
+                        <!-- populated by js -->
+                    </table>
+                    <table class="dense-table prop-table" style="margin-top: 4px;">
+                        <tr><td>Session</td><td id="ps-session">--</td></tr>
+                        <tr><td>Delta vs Prior</td><td id="ps-delta">--</td></tr>
+                    </table>
+                </div>
+            </section>
 
-                <!-- 2. Health and execution panel -->
+            <!-- 2. Health and execution panel -->
+            <section class="panel">
+                <div class="panel-header">HEALTH</div>
+                <div class="panel-content">
+                    <table class="dense-table prop-table">
+                        <tr><td>CRITICAL</td><td id="hl-missing-crit" style="font-weight:bold;">--</td></tr>
+                        <tr><td>NON-CRIT</td><td id="hl-missing-noncrit" style="font-weight:bold;">--</td></tr>
+                        <tr><td>STRUC AGE</td><td id="hl-struc-age" style="font-weight:bold;">--</td></tr>
+                        <tr><td>PREV AGE</td><td id="hl-prev-age" style="font-weight:bold;">--</td></tr>
+                        <tr><td>EXEC TIME</td><td id="hl-exec" style="font-weight:bold;">--</td></tr>
+                    </table>
+                </div>
+            </section>
+            
+            <!-- LLM INTELLIGENCE -->
+            <section class="panel" style="flex: 2;">
+                <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center;">
+                    <span>LLM INTELLIGENCE (LOCAL)</span>
+                </div>
+                <div class="panel-content">
+                    <div style="display: flex; gap: 8px;">
+                        <!-- Morning Brief -->
+                        <div style="flex: 1; min-width: 0; background: rgba(0, 0, 0, 0.2); padding: 4px; border: 1px solid var(--border-color);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 2px; margin-bottom: 4px;">
+                                <span style="font-weight: bold; color: var(--text-main);">MORNING BRIEF</span>
+                                <button id="btn-gen-morning" style="background: none; border: 1px solid var(--border-color); color: var(--text-main); cursor: pointer; font-family: monospace; font-size: 9px; padding: 1px 4px;">[GENERATE]</button>
+                            </div>
+                            <div id="llm-morning-content" style="font-size: 10px; color: var(--text-muted); min-height: 40px; max-height: 120px; overflow-y: auto; padding-right: 4px;">
+                                Loading...
+                            </div>
+                            <div id="llm-morning-meta" style="font-size: 9px; color: #555; text-align: right; margin-top: 4px;">--</div>
+                        </div>
+                        
+                        <!-- Evening Wrap -->
+                        <div style="flex: 1; min-width: 0; background: rgba(0, 0, 0, 0.2); padding: 4px; border: 1px solid var(--border-color);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 2px; margin-bottom: 4px;">
+                                <span style="font-weight: bold; color: var(--text-main);">EVENING WRAP</span>
+                                <button id="btn-gen-evening" style="background: none; border: 1px solid var(--border-color); color: var(--text-main); cursor: pointer; font-family: monospace; font-size: 9px; padding: 1px 4px;">[GENERATE]</button>
+                            </div>
+                            <div id="llm-evening-content" style="font-size: 10px; color: var(--text-muted); min-height: 40px; max-height: 120px; overflow-y: auto; padding-right: 4px;">
+                                Loading...
+                            </div>
+                            <div id="llm-evening-meta" style="font-size: 9px; color: #555; text-align: right; margin-top: 4px;">--</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <div class="main-workspace">
+            <!-- 5. Market context navigator -->
+            <section class="panel" style="flex: 1; display: flex; flex-direction: column;">
+                <div class="panel-header">MARKET CONTEXT NAVIGATOR</div>
+                <div class="tabs" id="context-tabs">
+                    <button class="tab-btn active" data-target="ctx-macro">MACRO / RATES</button>
+                    <button class="tab-btn" data-target="ctx-credit">CREDIT / LIQ</button>
+                    <button class="tab-btn" data-target="ctx-equity">EQUITY</button>
+                    <button class="tab-btn" data-target="ctx-sectors">SECTORS</button>
+                    <button class="tab-btn" data-target="ctx-vol">VOL / STRESS</button>
+                    <button class="tab-btn" data-target="ctx-flight">SAFETY / DEF</button>
+                    <button class="tab-btn" data-target="ctx-cross">CROSS ASSET</button>
+                    <button class="tab-btn" data-target="ctx-breadth">BREADTH</button>
+                    <button class="tab-btn" data-target="ctx-positioning">POSITION</button>
+                </div>
+                
+                <div class="tab-content-container" id="context-content">
+                    <!-- 6. Dense inspection tables populated here -->
+                </div>
+            </section>
+
+            <!-- Secondary Panel -->
+            <div class="side-panel">
+                
+                <!-- 0. THE BRIEF (Interpretation Layer) -->
                 <section class="panel">
-                    <div class="panel-header">SYSTEM HEALTH</div>
+                    <div class="panel-header">THE BRIEF (DETERMINISTIC)</div>
                     <div class="panel-content">
-                        <table class="dense-table prop-table">
-                            <tr><td>CRITICAL</td><td id="hl-missing-crit" style="font-weight:bold;">--</td></tr>
-                            <tr><td>NON-CRIT</td><td id="hl-missing-noncrit" style="font-weight:bold;">--</td></tr>
-                            <tr><td>STRUC AGE</td><td id="hl-struc-age" style="font-weight:bold;">--</td></tr>
-                            <tr><td>PREV AGE</td><td id="hl-prev-age" style="font-weight:bold;">--</td></tr>
-                            <tr><td>EXEC TIME</td><td id="hl-exec" style="font-weight:bold;">--</td></tr>
-                        </table>
+                        <div style="display: flex; flex-direction: column; gap: 8px;">
+                            <div>
+                                <div style="color: var(--text-muted); font-size: 9px; margin-bottom: 2px;">TOP RISKS / WATCH ITEMS</div>
+                                <ul id="brief-risks" style="margin: 0; padding-left: 0; list-style-type: none; font-size: 10px;">
+                                    <li>--</li>
+                                </ul>
+                            </div>
+                            <div>
+                                <div style="color: var(--text-muted); font-size: 9px; margin-bottom: 2px;">TOP SUPPORTS / CONFIRMATIONS</div>
+                                <ul id="brief-supports" style="margin: 0; padding-left: 0; list-style-type: none; font-size: 10px;">
+                                    <li>--</li>
+                                </ul>
+                            </div>
+                            <div>
+                                <div style="color: var(--text-muted); font-size: 9px; margin-bottom: 2px;">ALIGNMENT / CAVEATS</div>
+                                <ul id="brief-caveats" style="margin: 0; padding-left: 0; list-style-type: none; font-size: 10px;">
+                                    <li>--</li>
+                                </ul>
+                            </div>
+                        </div>
                     </div>
                 </section>
 
@@ -68,116 +152,32 @@
                 <section class="panel">
                     <div class="panel-header">NOTABLE CHANGES</div>
                     <div class="panel-content" id="delta-content">
-                        <ul id="delta-list" style="margin:0; padding-left:0; list-style-type:none; font-size:11px;">
+                        <ul id="delta-list" style="margin:0; padding-left:0; list-style-type:none; font-size:10px;">
                             <li>Loading...</li>
                         </ul>
                     </div>
                 </section>
-            </div>
 
-            <!-- Right Column: Market Context Navigator -->
-            <div class="col-right">
-                
-                <!-- 0. THE BRIEF (Interpretation Layer) -->
-                <section class="panel" style="margin-bottom: 8px;">
-                    <div class="panel-header">THE BRIEF</div>
+                <!-- Mini Panels for right space -->
+                <section class="panel">
+                    <div class="panel-header">QUICK VIEW</div>
                     <div class="panel-content">
-                        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-                            <div style="flex: 1; min-width: 250px;">
-                                <div style="color: var(--text-muted); font-size: 11px; margin-bottom: 4px;">TOP RISKS / WATCH ITEMS</div>
-                                <ul id="brief-risks" style="margin: 0; padding-left: 0; list-style-type: none; font-size: 12px;">
-                                    <li>--</li>
-                                </ul>
+                        <div style="display: flex; gap: 8px;">
+                            <div style="flex: 1; border-right: 1px solid var(--border-color);">
+                                <div style="color: var(--text-muted); margin-bottom: 2px; font-size: 9px;">CONFIDENCE</div>
+                                <div id="mini-conf" class="val-positive" style="font-size: 12px; font-weight: bold;">--</div>
                             </div>
-                            <div style="flex: 1; min-width: 250px;">
-                                <div style="color: var(--text-muted); font-size: 11px; margin-bottom: 4px;">TOP SUPPORTS / CONFIRMATIONS</div>
-                                <ul id="brief-supports" style="margin: 0; padding-left: 0; list-style-type: none; font-size: 12px;">
-                                    <li>--</li>
-                                </ul>
+                            <div style="flex: 1; border-right: 1px solid var(--border-color);">
+                                <div style="color: var(--text-muted); margin-bottom: 2px; font-size: 9px;">DATA QUAL</div>
+                                <div id="mini-qual" class="val-positive" style="font-size: 12px; font-weight: bold;">--</div>
                             </div>
-                            <div style="flex: 1; min-width: 200px;">
-                                <div style="color: var(--text-muted); font-size: 11px; margin-bottom: 4px;">ALIGNMENT / CAVEATS</div>
-                                <ul id="brief-caveats" style="margin: 0; padding-left: 0; list-style-type: none; font-size: 12px;">
-                                    <li>--</li>
-                                </ul>
+                            <div style="flex: 2;">
+                                <div style="color: var(--text-muted); margin-bottom: 2px; font-size: 9px;">ANOMALY FLAGS</div>
+                                <div id="mini-flags" class="val-neutral" style="font-weight: bold; line-height: 1.2; font-size: 10px;">--</div>
                             </div>
                         </div>
                     </div>
                 </section>
-
-                <!-- LLM INTELLIGENCE -->
-                <section class="panel" style="margin-bottom: 8px;">
-                    <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center;">
-                        <span>LLM INTELLIGENCE (LOCAL)</span>
-                    </div>
-                    <div class="panel-content">
-                        <div style="display: flex; gap: 12px;">
-                            <!-- Morning Brief -->
-                            <div style="flex: 1; min-width: 250px; background: rgba(0, 0, 0, 0.2); padding: 8px; border: 1px solid var(--border-color);">
-                                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 4px; margin-bottom: 8px;">
-                                    <span style="font-weight: bold; color: var(--text-main);">MORNING BRIEF</span>
-                                    <button id="btn-gen-morning" style="background: none; border: 1px solid var(--border-color); color: var(--text-main); cursor: pointer; font-family: monospace; font-size: 10px; padding: 2px 6px;">[GENERATE]</button>
-                                </div>
-                                <div id="llm-morning-content" style="font-size: 12px; color: var(--text-muted); min-height: 40px; max-height: 250px; overflow-y: auto; padding-right: 4px;">
-                                    Loading...
-                                </div>
-                                <div id="llm-morning-meta" style="font-size: 9px; color: #555; text-align: right; margin-top: 8px;">--</div>
-                            </div>
-                            
-                            <!-- Evening Wrap -->
-                            <div style="flex: 1; min-width: 250px; background: rgba(0, 0, 0, 0.2); padding: 8px; border: 1px solid var(--border-color);">
-                                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 4px; margin-bottom: 8px;">
-                                    <span style="font-weight: bold; color: var(--text-main);">EVENING WRAP</span>
-                                    <button id="btn-gen-evening" style="background: none; border: 1px solid var(--border-color); color: var(--text-main); cursor: pointer; font-family: monospace; font-size: 10px; padding: 2px 6px;">[GENERATE]</button>
-                                </div>
-                                <div id="llm-evening-content" style="font-size: 12px; color: var(--text-muted); min-height: 40px; max-height: 250px; overflow-y: auto; padding-right: 4px;">
-                                    Loading...
-                                </div>
-                                <div id="llm-evening-meta" style="font-size: 9px; color: #555; text-align: right; margin-top: 8px;">--</div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-                <div style="display: flex; flex: 1; gap: 4px; min-height: 0;">
-                    <!-- 5. Market context navigator -->
-                    <section class="panel flex-panel" style="flex: 3;">
-                        <div class="panel-header">MARKET CONTEXT NAVIGATOR</div>
-                        <div class="tabs" id="context-tabs">
-                            <button class="tab-btn active" data-target="ctx-macro">MACRO / RATES</button>
-                            <button class="tab-btn" data-target="ctx-credit">CREDIT / LIQ</button>
-                            <button class="tab-btn" data-target="ctx-equity">EQUITY</button>
-                            <button class="tab-btn" data-target="ctx-sectors">SECTORS</button>
-                            <button class="tab-btn" data-target="ctx-vol">VOL / STRESS</button>
-                            <button class="tab-btn" data-target="ctx-flight">SAFETY / DEF</button>
-                            <button class="tab-btn" data-target="ctx-cross">CROSS ASSET</button>
-                            <button class="tab-btn" data-target="ctx-breadth">BREADTH</button>
-                            <button class="tab-btn" data-target="ctx-positioning">POSITION</button>
-                        </div>
-                        
-                        <div class="tab-content-container" id="context-content">
-                            <!-- 6. Dense inspection tables populated here -->
-                        </div>
-                    </section>
-
-                    <!-- Mini Panels for right space -->
-                    <section class="panel" style="flex: 1; min-width: 220px; max-width: 300px;">
-                        <div class="panel-header">QUICK VIEW</div>
-                        <div class="panel-content">
-                            <div style="margin-bottom: 12px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">
-                                <div style="color: var(--text-muted); margin-bottom: 4px; font-size: 10px;">CONFIDENCE</div>
-                                <div id="mini-conf" class="val-positive" style="font-size: 14px; font-weight: bold;">--</div>
-                            </div>
-                            <div style="margin-bottom: 12px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">
-                                <div style="color: var(--text-muted); margin-bottom: 4px; font-size: 10px;">DATA QUALITY</div>
-                                <div id="mini-qual" class="val-positive" style="font-size: 14px; font-weight: bold;">--</div>
-                            </div>
-                            <div style="margin-bottom: 12px;">
-                                <div style="color: var(--text-muted); margin-bottom: 4px; font-size: 10px;">ANOMALY FLAGS</div>
-                                <div id="mini-flags" class="val-neutral" style="font-weight: bold; line-height: 1.5;">--</div>
-                            </div>
-                        </div>
-                    </section>
-                </div>
 
                 <!-- 8. Raw audit drilldown -->
                 <section class="panel raw-audit-panel">

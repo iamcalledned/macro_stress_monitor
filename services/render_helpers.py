@@ -85,12 +85,12 @@ def class_from_state(state: Any) -> str:
     muted_words = ["unavailable", "insufficient", "--"]
     
     if any(w in s for w in positive_words):
-        return "val-positive"
+        return "val-positive state-cell"
     if any(w in s for w in warning_words):
-        return "val-warning"
+        return "val-warning state-cell"
     if any(w in s for w in negative_words):
-        return "val-negative"
+        return "val-negative state-cell"
     if any(w in s for w in muted_words):
-        return "color-muted"
+        return "color-muted state-cell"
     
-    return "val-neutral"
+    return "val-neutral state-cell"

@@ -26,8 +26,8 @@ body {
     background-color: var(--bg-base);
     color: var(--text-main);
     font-family: var(--font-mono);
-    font-size: 11px;
-    line-height: 1.15;
+    font-size: 10px;
+    line-height: 1.1;
     height: 100vh;
     overflow: hidden;
 }
@@ -36,15 +36,15 @@ body {
 .status-strip {
     background-color: var(--bg-panel-header);
     border-bottom: 2px solid var(--border-color);
-    padding: 2px 8px;
+    padding: 2px 6px;
     display: flex;
     justify-content: space-between;
     align-items: center;
     font-weight: bold;
     color: var(--text-bright);
     white-space: nowrap;
-    min-height: 20px;
-    font-size: 11px;
+    min-height: 18px;
+    font-size: 10px;
 }
 
 .strip-section {
@@ -67,28 +67,35 @@ body {
     gap: 4px;
 }
 
-.grid-main {
+.upper-row {
+    display: flex;
+    gap: 4px;
+    flex: 0 0 auto;
+    min-height: 100px;
+}
+
+.upper-row > section {
+    flex: 1;
+    min-width: 200px;
+}
+
+.main-workspace {
     display: flex;
     flex: 1;
     gap: 4px;
     min-height: 0;
 }
 
-.col-left {
-    flex: 0 0 280px;
+.main-workspace > section {
+    flex: 1;
+}
+
+.side-panel {
+    flex: 0 0 300px !important;
     display: flex;
     flex-direction: column;
     gap: 4px;
     overflow-y: auto;
-    padding-right: 2px;
-}
-
-.col-right {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    min-width: 0;
 }
 
 /* Panels */
@@ -107,16 +114,16 @@ body {
 .panel-header {
     background-color: var(--bg-panel-header);
     border-bottom: 1px solid var(--border-color);
-    padding: 2px 6px;
+    padding: 2px 4px;
     font-weight: bold;
     color: var(--accent);
     letter-spacing: 0.5px;
-    font-size: 11px;
+    font-size: 10px;
     text-transform: uppercase;
 }
 
 .panel-content {
-    padding: 4px;
+    padding: 2px 4px;
     flex: 1;
     overflow-y: auto;
 }
@@ -130,7 +137,7 @@ body {
     padding: 1px 3px;
     color: #000;
     font-weight: bold;
-    font-size: 11px;
+    font-size: 10px;
     display: inline-block;
     text-transform: uppercase;
 }
@@ -159,10 +166,10 @@ body {
 }
 
 .summary-line {
-    margin-bottom: 4px;
+    margin-bottom: 2px;
     text-align: center;
     color: var(--yellow);
-    font-size: 11px;
+    font-size: 10px;
     font-weight: bold;
 }
 
@@ -170,12 +177,12 @@ body {
 .dense-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 11px;
+    font-size: 10px;
 }
 
 .dense-table th, .dense-table td {
     border: 1px solid var(--border-color);
-    padding: 2px 4px;
+    padding: 1px 4px;
     text-align: left;
     white-space: nowrap;
     overflow: hidden;
@@ -224,9 +231,9 @@ body {
     border: none;
     border-right: 1px solid var(--border-color);
     color: var(--text-muted);
-    padding: 2px 8px;
+    padding: 2px 6px;
     font-family: inherit;
-    font-size: 11px;
+    font-size: 10px;
     cursor: pointer;
     text-transform: uppercase;
     font-weight: bold;
@@ -236,9 +243,9 @@ body {
     background-color: #222;
 }
 .tab-btn.active {
-    background-color: var(--bg-panel);
-    color: var(--yellow);
-    border-bottom: 2px solid var(--yellow);
+    background-color: #1a1a1a;
+    color: var(--text-bright);
+    border-bottom: 2px solid var(--accent);
 }
 
 .tab-content-container {
@@ -294,3 +301,8 @@ body {
 .val-warning { color: var(--yellow); font-weight: bold; }
 .val-danger { color: var(--orange); font-weight: bold; }
 .val-neutral { color: var(--text-main); }
+
+.state-cell {
+    font-weight: 800;
+    text-transform: uppercase;
+}
