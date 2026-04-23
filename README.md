@@ -680,6 +680,17 @@ Foundation endpoints:
 - `/api/macro/preview`
 - `/api/macro/context`
 
+## Terminal Operator Interface
+
+The frontend (`macro_stress_monitor/web/`) has been fully re-architected into a high-density, Bloomberg-inspired operator console. It entirely avoids generic dashboard components in favor of an unapologetically serious, tabular inspection layout.
+
+Key features:
+- **Zero External Dependencies:** Built with pure vanilla HTML/JS/CSS.
+- **Direct Foundation Access:** Bypasses legacy aggregate endpoints, fetching directly from `/api/health`, `/api/macro/latest`, `/api/macro/preview`, and `/api/macro/context`.
+- **Market Context Navigator:** Explodes the deep `market_context` data into 9 dense data grids (Macro/Rates, Credit, Equity, Sectors, Volatility, Safety, Cross-Asset, Breadth, Positioning).
+- **Signal-First Styling:** Deep black backgrounds, monospaced typography, and hard neon color coding (Red/Yellow/Green) for explicit anomaly and state scanning.
+- **Audit Drilldown:** An integrated raw JSON drilldown allows operators to inspect the unvarnished payload backing the interface at any time.
+
 ## Scheduling
 
 Systemd timer files are included under:
