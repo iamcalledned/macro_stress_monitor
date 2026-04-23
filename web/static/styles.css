@@ -192,12 +192,10 @@ body {
 .data-table {
     width: 100%;
     margin-bottom: 8px;
+    font-size: 12px;
 }
 .data-table th, .data-table td {
-    width: 1%;
-}
-.data-table th:last-child, .data-table td:last-child {
-    width: auto;
+    padding: 4px 12px;
 }
 
 .dense-table th {
