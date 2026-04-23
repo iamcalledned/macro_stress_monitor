@@ -182,11 +182,17 @@ body {
 
 .dense-table th, .dense-table td {
     border: 1px solid var(--border-color);
-    padding: 1px 4px;
+    padding: 2px 6px;
     text-align: left;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+.data-table {
+    width: max-content;
+    min-width: 60%;
+    margin-bottom: 8px;
 }
 
 .dense-table th {
