@@ -58,10 +58,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 btnMorning.textContent = "[WAIT...]";
                 try {
                     const res = await fetch("/api/brief/morning/generate", {method: "POST"});
-                    if (!res.ok) throw new Error("Failed to generate");
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                    const data = await res.json();
+                    if (data.error) throw new Error(data.error);
                     await fetchData(); // Reload UI
                 } catch(err) {
-                    alert("Error generating Morning Brief: " + err);
+                    alert("Error generating Morning Brief: " + err.message);
                 } finally {
                     btnMorning.textContent = "[GENERATE]";
                 }
@@ -73,10 +75,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 btnEvening.textContent = "[WAIT...]";
                 try {
                     const res = await fetch("/api/brief/evening/generate", {method: "POST"});
-                    if (!res.ok) throw new Error("Failed to generate");
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                    const data = await res.json();
+                    if (data.error) throw new Error(data.error);
                     await fetchData(); // Reload UI
                 } catch(err) {
-                    alert("Error generating Evening Wrap: " + err);
+                    alert("Error generating Evening Wrap: " + err.message);
                 } finally {
                     btnEvening.textContent = "[GENERATE]";
                 }

@@ -28,8 +28,7 @@ def generate_completion(system_prompt: str, user_prompt: str, temperature: float
             {"role": "user", "content": user_prompt}
         ],
         "temperature": temperature,
-        "max_tokens": max_tokens,
-        "response_format": {"type": "json_object"}
+        "max_tokens": max_tokens
     }
     
     req = urllib.request.Request(
@@ -47,22 +46,34 @@ def generate_completion(system_prompt: str, user_prompt: str, temperature: float
             content = result["choices"][0]["message"]["content"]
             
             try:
-                # Ensure the LLM returned valid JSON as requested by response_format
-                json_content = json.loads(content)
+                # Try to extract JSON if the model wrapped it in markdown
+                content_clean = content.strip()
+                if content_clean.startswith("```json"):
+                    content_clean = content_clean[7:]
+                if content_clean.startswith("```"):
+                    content_clean = content_clean[3:]
+                if content_clean.endswith("```"):
+                    content_clean = content_clean[:-3]
+                content_clean = content_clean.strip()
+                
+                json_content = json.loads(content_clean)
                 return {
                     "success": True,
                     "text": content,
                     "parsed": json_content,
                     "meta": meta
                 }
-            except json.JSONDecodeError:
+            except json.JSONDecodeError as e:
                 return {
                     "success": False,
-                    "error": "LLM returned invalid JSON format.",
+                    "error": f"LLM returned invalid JSON format: {str(e)}",
                     "raw_text": content,
                     "meta": meta
                 }
                 
+    except urllib.error.HTTPError as e:
+        err_body = e.read().decode('utf-8')
+        return {"success": False, "error": f"HTTP {e.code}: {err_body}", "meta": meta}
     except urllib.error.URLError as e:
         return {"success": False, "error": f"Connection failed: {e.reason}", "meta": meta}
     except Exception as e:
