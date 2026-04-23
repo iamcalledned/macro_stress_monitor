@@ -599,21 +599,21 @@ def create_app():
         health = reader.get_health_snapshot(redis_client) or {}
         struct = reader.get_latest_structural_snapshot(redis_client) or {}
         prev = reader.get_latest_preview_snapshot(redis_client) or {}
-        return jsonify(render.build_status_strip(health, struct, prev)), 200
+        return jsonify(render.build_status_strip_bindings(health, struct, prev)), 200
 
     @app.route("/api/render/structural")
     def api_render_structural():
         if redis_client is None:
             return jsonify({"error": "Redis unavailable"}), 503
         struct = reader.get_latest_structural_snapshot(redis_client) or {}
-        return jsonify(render.build_structural_summary(struct)), 200
+        return jsonify(render.build_structural_summary_bindings(struct)), 200
 
     @app.route("/api/render/preview")
     def api_render_preview():
         if redis_client is None:
             return jsonify({"error": "Redis unavailable"}), 503
         prev = reader.get_latest_preview_snapshot(redis_client) or {}
-        return jsonify(render.build_preview_summary(prev)), 200
+        return jsonify(render.build_preview_summary_bindings(prev)), 200
 
     @app.route("/api/render/health")
     def api_render_health_panel():
@@ -621,7 +621,7 @@ def create_app():
             return jsonify({"error": "Redis unavailable"}), 503
         health = reader.get_health_snapshot(redis_client) or {}
         struct = reader.get_latest_structural_snapshot(redis_client) or {}
-        return jsonify(render.build_health_summary(health, struct)), 200
+        return jsonify(render.build_health_summary_bindings(health, struct)), 200
 
     @app.route("/api/render/context")
     def api_render_context():
@@ -629,7 +629,7 @@ def create_app():
             return jsonify({"error": "Redis unavailable"}), 503
         ctx = reader.get_latest_market_context(redis_client) or {}
         mc_data = ctx.get("market_context", ctx)
-        return jsonify(render.build_market_context(mc_data)), 200
+        return jsonify(render.build_market_context_bindings(mc_data)), 200
 
     @app.route("/favicon.ico")
     def favicon():

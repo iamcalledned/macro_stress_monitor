@@ -1,10 +1,11 @@
 """
 Render presentation layer.
-Transforms raw foundation snapshots into UI-ready models, removing all business and formatting logic from the frontend.
+Transforms raw foundation snapshots into explicitly normalized DOM bindings
+and pre-rendered HTML blocks, removing all logic from the frontend.
 Includes slots for future AI brain integrations.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Callable
 import json
 
 from .render_helpers import (
@@ -24,161 +25,139 @@ def _get_brain_hooks() -> Dict[str, Any]:
         "interpretation_slot": None,
     }
 
-def build_status_strip(health: Dict[str, Any], struct: Dict[str, Any], prev: Dict[str, Any]) -> Dict[str, Any]:
-    # Construct Structural portion
+
+def _bind(id_name: str, text: Any = None, class_name: str = None, html: str = None) -> Dict[str, Any]:
+    """Helper to generate a normalized binding payload."""
+    b = {"id": id_name}
+    if text is not None: b["text"] = str(text)
+    if class_name is not None: b["class_name"] = str(class_name)
+    if html is not None: b["html"] = str(html)
+    return b
+
+
+def build_status_strip_bindings(health: Dict[str, Any], struct: Dict[str, Any], prev: Dict[str, Any]) -> List[Dict[str, Any]]:
+    b = []
+    
+    # Structural
     score = struct.get("composite_score", "--")
     regime_label = struct.get("regime_label", "UNKNOWN")
+    b.append(_bind("ts-regime", text=regime_label, class_name=f"badge {get_env_color(score)}"))
+    b.append(_bind("ts-score", text=score, class_name=get_env_text_color(score)))
+    b.append(_bind("ts-struc-time", text=format_time_et(struct.get("computed_at_utc"))))
     
-    # Construct flags
-    flags = []
-    if struct.get("is_stale"):
-        flags.append("STRUC_STALE")
-    anomaly = struct.get("anomaly_flags", {})
-    if anomaly.get("extreme_move"):
-        flags.append("EXT_MOVE")
-    if anomaly.get("volatility_spike"):
-        flags.append("VOL_SPIKE")
-    if anomaly.get("multi_asset_divergence"):
-        flags.append("DIVERGENCE")
-        
     dq = struct.get("data_quality", {})
-    if dq.get("critical_missing"):
-        flags.append("MISSING_CRIT")
-        
-    flags_text = " ".join(flags) if flags else "OK"
-    flags_class = "color-orange" if flags else "color-green"
-    
-    # Quality & Confidence
-    sc = struct.get("state_confidence", {})
-    conf = sc.get("confidence_level") or struct.get("confidence") or "N/A"
     completeness = dq.get("completeness_score")
     qual_text = f"{int(completeness * 100)}%" if completeness is not None else "N/A"
+    b.append(_bind("ts-quality", text=qual_text))
+    
+    sc = struct.get("state_confidence", {})
+    conf = sc.get("confidence_level") or struct.get("confidence") or "N/A"
+    b.append(_bind("ts-conf", text=conf))
+    
+    # Flags
+    flags = []
+    if struct.get("is_stale"): flags.append("STRUC_STALE")
+    anomaly = struct.get("anomaly_flags", {})
+    if anomaly.get("extreme_move"): flags.append("EXT_MOVE")
+    if anomaly.get("volatility_spike"): flags.append("VOL_SPIKE")
+    if anomaly.get("multi_asset_divergence"): flags.append("DIVERGENCE")
+    if dq.get("critical_missing"): flags.append("MISSING_CRIT")
+        
+    b.append(_bind(
+        "ts-flags", 
+        text=" ".join(flags) if flags else "OK", 
+        class_name="color-orange" if flags else "color-green"
+    ))
     
     # Preview
     if prev and not prev.get("error"):
         pa = prev.get("preview_spillover_assessment", "N/A")
         prev_class = "bg-green"
-        if "Credit confirming" in pa:
-            prev_class = "bg-red"
-        elif "watch credit" in pa:
-            prev_class = "bg-orange"
+        if "Credit confirming" in pa: prev_class = "bg-red"
+        elif "watch credit" in pa: prev_class = "bg-orange"
         
-        prev_display = {
-            "text": pa,
-            "class_name": f"badge {prev_class}",
-            "time_et": format_time_et(prev.get("computed_at_utc"))
-        }
+        b.append(_bind("ts-preview", text=pa, class_name=f"badge {prev_class}"))
+        b.append(_bind("ts-prev-time", text=format_time_et(prev.get("computed_at_utc"))))
     else:
-        prev_display = {
-            "text": "OFF",
-            "class_name": "badge bg-muted",
-            "time_et": "--"
-        }
+        b.append(_bind("ts-preview", text="OFF", class_name="badge bg-muted"))
+        b.append(_bind("ts-prev-time", text="--"))
         
-    return {
-        "structural": {
-            "regime_text": regime_label,
-            "regime_class": f"badge {get_env_color(score)}",
-            "score_text": str(score),
-            "score_class": get_env_text_color(score),
-            "time_et": format_time_et(struct.get("computed_at_utc")),
-            "quality_text": qual_text,
-            "confidence_text": conf,
-            "flags_text": flags_text,
-            "flags_class": flags_class
-        },
-        "preview": prev_display,
-        "brain_hooks": _get_brain_hooks()
-    }
+    return b
 
 
-def build_structural_summary(struct: Dict[str, Any]) -> Dict[str, Any]:
+def build_structural_summary_bindings(struct: Dict[str, Any]) -> List[Dict[str, Any]]:
+    b = []
     score = struct.get("composite_score", "--")
-    regime = struct.get("regime") or struct.get("regime_label") or "--"
+    b.append(_bind("ss-score", text=score, class_name=f"big-score {get_env_text_color(score)}"))
     
-    # Extract drivers robustly
+    regime = struct.get("regime") or struct.get("regime_label") or "--"
+    b.append(_bind("ss-regime", text=str(regime).upper(), class_name=f"summary-line {class_from_state(regime)}"))
+    
+    # Drivers
     drivers = struct.get("primary_drivers", [])
     ss = struct.get("signal_summary", {})
-    if ss.get("primary_driver"):
-        drivers = ss.get("primary_driver")
-    elif isinstance(drivers, list):
-        drivers = ", ".join(drivers)
-    elif isinstance(drivers, dict):
-        drivers = drivers.get("one_line") or json.dumps(drivers)
-        
-    drivers_text = str(drivers).upper() if isinstance(drivers, str) else "NONE"
+    if ss.get("primary_driver"): drivers = ss.get("primary_driver")
+    elif isinstance(drivers, list): drivers = ", ".join(drivers)
+    elif isinstance(drivers, dict): drivers = drivers.get("one_line") or json.dumps(drivers)
+    b.append(_bind("ss-drivers", text=str(drivers).upper() if isinstance(drivers, str) else "NONE"))
     
     # Deltas
-    d_text = "--"
-    d_class = "val-neutral"
     delta = struct.get("delta", {})
     if delta.get("available"):
         chg = delta.get("score_change", 0)
         prefix = "+" if chg > 0 else ""
-        d_text = f"{prefix}{chg}"
-        if chg > 0:
-            d_class = "val-negative"
-        elif chg < 0:
-            d_class = "val-positive"
-            
-    return {
-        "score_text": str(score),
-        "score_class": f"big-score {get_env_text_color(score)}",
-        "regime_text": str(regime).upper(),
-        "regime_class": f"summary-line {class_from_state(regime)}",
-        "drivers_text": drivers_text,
-        "delta_text": d_text,
-        "delta_class": d_class,
-        "brain_hooks": _get_brain_hooks()
-    }
+        d_class = "val-negative" if chg > 0 else ("val-positive" if chg < 0 else "val-neutral")
+        b.append(_bind("ss-delta", text=f"{prefix}{chg}", class_name=d_class))
+    else:
+        b.append(_bind("ss-delta", text="--", class_name="val-neutral"))
+        
+    return b
 
 
-def build_preview_summary(prev: Dict[str, Any]) -> Dict[str, Any]:
-    assessment = prev.get("preview_spillover_assessment", "--")
+def build_preview_summary_bindings(prev: Dict[str, Any]) -> List[Dict[str, Any]]:
+    b = []
+    b.append(_bind("ps-assessment", text=prev.get("preview_spillover_assessment", "--")))
+    
+    session = (prev.get("session") or {}).get("market_session", "--")
+    b.append(_bind("ps-session", text=session))
+    
+    delta_text = "Updated" if (prev.get("delta") or {}).get("available") else "--"
+    b.append(_bind("ps-delta", text=delta_text))
     
     rows = []
     pc = prev.get("component_statuses") or prev.get("components") or {}
     for k, v in pc.items():
-        if isinstance(v, dict):
-            text = v.get("status") or (v.get("state") or {}).get("text") or json.dumps(v)
-        else:
-            text = str(v)
-        rows.append({"label": k, "value": text})
+        text = (v.get("status") or (v.get("state") or {}).get("text") or json.dumps(v)) if isinstance(v, dict) else str(v)
+        rows.append(f"<tr><td>{k}</td><td>{text}</td></tr>")
         
-    session = (prev.get("session") or {}).get("market_session", "--")
-    delta_text = "Updated" if (prev.get("delta") or {}).get("available") else "--"
-    
-    return {
-        "assessment_text": assessment,
-        "components": rows,
-        "session_text": session,
-        "delta_text": delta_text,
-        "brain_hooks": _get_brain_hooks()
-    }
+    b.append(_bind("ps-components", html="".join(rows) if rows else "<tr><td colspan='2'>No components</td></tr>"))
+    return b
 
 
-def build_health_summary(health: Dict[str, Any], struct: Dict[str, Any]) -> Dict[str, Any]:
-    s_age_min = round((health.get("structural_age_seconds") or 0) / 60)
-    p_age_min = round((health.get("preview_age_seconds") or 0) / 60)
+def build_health_summary_bindings(health: Dict[str, Any], struct: Dict[str, Any]) -> List[Dict[str, Any]]:
+    b = []
+    s_age = round((health.get("structural_age_seconds") or 0) / 60)
+    p_age = round((health.get("preview_age_seconds") or 0) / 60)
     
-    s_stale = health.get("structural_stale", False)
-    p_stale = health.get("preview_stale", False)
+    b.append(_bind("hl-struc-age", text=f"{s_age}m", class_name="color-red" if health.get("structural_stale") else "color-green"))
+    b.append(_bind("hl-prev-age", text=f"{p_age}m", class_name="color-red" if health.get("preview_stale") else "color-green"))
     
     exec_sec = (struct.get("execution") or {}).get("total_seconds")
-    exec_text = f"{format_num(exec_sec, 2)}s" if exec_sec is not None else "--"
+    b.append(_bind("hl-exec", text=f"{format_num(exec_sec, 2)}s" if exec_sec is not None else "--"))
     
     dq = struct.get("data_quality", {})
     crit_missing = dq.get("critical_missing", False)
-    crit_text = "YES" if crit_missing else "OK"
-    non_crit_text = str(dq.get("noncritical_missing_count", 0))
+    b.append(_bind("hl-missing-crit", text="YES" if crit_missing else "OK", class_name="color-red" if crit_missing else "color-green"))
+    b.append(_bind("hl-missing-noncrit", text=str(dq.get("noncritical_missing_count", 0))))
     
     # Mini panels
     conf = (struct.get("state_confidence") or {}).get("confidence_level") or struct.get("confidence") or "N/A"
     conf_class = "val-positive" if "HIGH" in str(conf) else ("val-negative" if "LOW" in str(conf) else "val-warning")
+    b.append(_bind("mini-conf", text=conf, class_name=conf_class))
     
     completeness = dq.get("completeness_score")
-    qual_text = f"{int(completeness * 100)}%" if completeness is not None else "N/A"
     qual_class = "val-positive" if completeness and completeness > 0.9 else "val-warning"
+    b.append(_bind("mini-qual", text=f"{int(completeness * 100)}%" if completeness is not None else "N/A", class_name=qual_class))
     
     # Mini flags
     flgs = []
@@ -188,262 +167,226 @@ def build_health_summary(health: Dict[str, Any], struct: Dict[str, Any]) -> Dict
     if anomaly.get("volatility_spike"): flgs.append("VOL_SPIKE")
     if anomaly.get("multi_asset_divergence"): flgs.append("DIVERGENCE")
     
-    if flgs:
-        flags_html = "".join([f'<div class="color-red">⚠ {f}</div>' for f in flgs])
-    else:
-        flags_html = '<div class="color-green">OK</div>'
-        
-    return {
-        "structural_age_text": f"{s_age_min}m",
-        "structural_age_class": "color-red" if s_stale else "color-green",
-        "preview_age_text": f"{p_age_min}m",
-        "preview_age_class": "color-red" if p_stale else "color-green",
-        "execution_text": exec_text,
-        "critical_text": crit_text,
-        "critical_class": "color-red" if crit_missing else "color-green",
-        "noncritical_text": non_crit_text,
-        "mini_conf_text": conf,
-        "mini_conf_class": conf_class,
-        "mini_qual_text": qual_text,
-        "mini_qual_class": qual_class,
-        "mini_flags_html": flags_html,
-        "brain_hooks": _get_brain_hooks()
-    }
+    flags_html = "".join([f'<div class="color-red">⚠ {f}</div>' for f in flgs]) if flgs else '<div class="color-green">OK</div>'
+    b.append(_bind("mini-flags", html=flags_html))
+    return b
 
 
-def build_notable_changes(struct: Dict[str, Any]) -> Dict[str, Any]:
+def build_notable_changes_bindings(struct: Dict[str, Any]) -> List[Dict[str, Any]]:
     rows = []
     delta = struct.get("delta", {})
     
     if delta.get("available"):
         if delta.get("regime_changed"):
-            prev_r = delta.get("previous_regime", "UNKNOWN")
-            curr_r = delta.get("current_regime", "UNKNOWN")
-            rows.append({
-                "text_html": f'+ REGIME: {prev_r} -> {curr_r}',
-                "class_name": "val-warning",
-                "style": "margin-bottom: 4px;"
-            })
+            rows.append(f'<li class="val-warning" style="margin-bottom: 4px;">+ REGIME: {delta.get("previous_regime")} -> {delta.get("current_regime")}</li>')
             
         stc = delta.get("component_state_changes", {})
         for k, v in stc.items():
-            prev = v.get("previous", "UNKNOWN")
             curr = v.get("current", "UNKNOWN")
-            curr_class = class_from_state(curr)
-            rows.append({
-                "text_html": f'+ {str(k).upper()}: <span class="color-muted">{prev}</span> -> <span class="{curr_class}">{curr}</span>',
-                "class_name": "",
-                "style": "margin-bottom: 2px;"
-            })
+            rows.append(f'<li style="margin-bottom: 2px;">+ {str(k).upper()}: <span class="color-muted">{v.get("previous")}</span> -> <span class="{class_from_state(curr)}">{curr}</span></li>')
             
         ssc = delta.get("component_subscore_changes", {})
         for k, v in ssc.items():
-            prev = v.get("previous", "UNKNOWN")
-            curr = v.get("current", "UNKNOWN")
-            rows.append({
-                "text_html": f'+ {str(k).upper()}: <span class="color-muted">{prev}</span> -> <span>{curr}</span>',
-                "class_name": "",
-                "style": "margin-bottom: 2px;"
-            })
+            rows.append(f'<li style="margin-bottom: 2px;">+ {str(k).upper()}: <span class="color-muted">{v.get("previous")}</span> -> <span>{v.get("current")}</span></li>')
             
-    if not rows:
-        rows.append({
-            "text_html": "NO MATERIAL CHANGE",
-            "class_name": "color-muted",
-            "style": ""
-        })
-        
-    return {
-        "rows": rows,
-        "brain_hooks": _get_brain_hooks()
-    }
+    b = [_bind("delta-list", html="".join(rows) if rows else "<li class='color-muted'>NO MATERIAL CHANGE</li>")]
+    return b
 
 
-def build_market_context(mc: Dict[str, Any]) -> List[Dict[str, Any]]:
-    # Define sections
-    sections_def = [
-        {"id": "ctx-macro", "key": "macro_rates", "title": "MACRO / RATES", "headers": ["SERIES", "VALUE", "5D Δ", "20D Δ", "Z", "STATE"]},
-        {"id": "ctx-credit", "key": "credit_liquidity", "title": "CREDIT / LIQ", "headers": ["SERIES", "VALUE", "Z", "STATE", "STRETCH"]},
-        {"id": "ctx-equity", "key": "equity_index_state", "title": "EQUITY", "headers": ["ASSET", "5D Δ", "20D Δ", "vs 200DMA", "Z", "STATE", "STRETCH"]},
-        {"id": "ctx-sectors", "key": "sector_state", "title": "SECTORS", "headers": ["SECTOR", "vs SPY 5D", "vs SPY 20D", "Z", "LEADERSHIP"]},
-        {"id": "ctx-vol", "key": "volatility_stress", "title": "VOL / STRESS", "headers": ["ASSET", "REALIZED", "PCTILE", "STATE"]},
-        {"id": "ctx-flight", "key": "flight_to_safety", "title": "SAFETY", "headers": ["ASSET", "STATE", "STRETCH", "DESC"]},
-        {"id": "ctx-cross", "key": "cross_asset_relationships", "title": "CROSS ASSET", "headers": ["PAIR", "RATIO", "5D Δ", "Z", "STATE"]},
-        {"id": "ctx-breadth", "key": "breadth_participation", "title": "BREADTH", "headers": ["METRIC", "VALUE", "PCT"]},
-        {"id": "ctx-positioning", "key": "positioning_stretch", "title": "POSITIONING", "headers": ["ASSET", "RSI", "vs 200DMA", "STRETCH"]}
-    ]
+# --- Centralized Market Context Adapters ---
+
+def _build_row(cells: List[Dict[str, str]]) -> str:
+    html = "<tr>"
+    for c in cells:
+        cls = f' class="{c.get("class")}"' if c.get("class") else ""
+        html += f"<td{cls}>{c.get('html')}</td>"
+    return html + "</tr>"
+
+def _cell(html: Any, class_name: str = None) -> Dict[str, str]:
+    return {"html": str(html), "class": class_name}
+
+def _adapter_macro_rates(data: Dict) -> str:
+    rows = []
+    def _add(name, v):
+        if v: rows.append(_build_row([
+            _cell(name),
+            _cell(format_num(v.get("latest_bps", v.get("latest"))), "num-cell"),
+            _cell(format_num(v.get("change_5d_bps", v.get("change_5d"))), "num-cell"),
+            _cell(format_num(v.get("change_20d_bps", v.get("change_20d"))), "num-cell"),
+            _cell(format_num(v.get("z_score_1y")), "num-cell"),
+            _cell(v.get("state", "--"), class_from_state(v.get("state")))
+        ]))
+    for sk, sv in data.get("rates", {}).items(): _add(sk, sv)
+    for sk, sv in data.get("curve_spreads", {}).items(): _add(sk, sv)
+    for sk, sv in data.get("inflation_growth", {}).items(): _add(sk, sv)
+    _add("Dollar (UUP)", data.get("dollar_proxy", {}).get("state"))
+    _add("Real Rate (10Y-BE)", data.get("real_rate_proxy", {}).get("state"))
+    return "".join(rows)
+
+def _adapter_credit_liquidity(data: Dict) -> str:
+    rows = []
+    def _add(name, v):
+        if v: rows.append(_build_row([
+            _cell(name),
+            _cell(format_num(v.get("latest", v.get("latest_ratio", v.get("latest_bps")))), "num-cell"),
+            _cell(format_num(v.get("z_score_1y", v.get("z_score"))), "num-cell"),
+            _cell(v.get("state", "--"), class_from_state(v.get("state"))),
+            _cell(v.get("stretch_state", "--"), class_from_state(v.get("stretch_state")))
+        ]))
+    _add("IG OAS", data.get("ig_oas"))
+    _add("HY OAS", data.get("hy_oas"))
+    _add("Loan Proxy (BKLN)", data.get("loan_proxy"))
+    for sk, sv in data.get("credit_etf_relationships", {}).items(): _add(sk, sv)
+    for sk, sv in data.get("liquidity_sensitive_proxies", {}).items(): _add(sk, sv)
+    return "".join(rows)
+
+def _adapter_equity_index(data: Dict) -> str:
+    rows = []
+    for sk, v in data.items():
+        if isinstance(v, dict): rows.append(_build_row([
+            _cell(sk),
+            _cell(format_num(v.get("return_5d", 0), is_percent=True), "num-cell"),
+            _cell(format_num(v.get("return_20d", 0), is_percent=True), "num-cell"),
+            _cell(format_num(v.get("distance_200dma", 0), is_percent=True), "num-cell"),
+            _cell(format_num(v.get("z_score_1y")), "num-cell"),
+            _cell(v.get("trend_state", "--"), class_from_state(v.get("trend_state"))),
+            _cell(v.get("stretch_state", "--"), class_from_state(v.get("stretch_state")))
+        ]))
+    return "".join(rows)
+
+def _adapter_sectors(data: Dict) -> str:
+    rows = []
+    for sk, v in data.items():
+        if isinstance(v, dict):
+            rel = v.get("relative_to_spy", {})
+            lead = "YES" if v.get("leadership_flag") else ("LAG" if v.get("laggard_flag") else "--")
+            rows.append(_build_row([
+                _cell(sk),
+                _cell(format_num(rel.get("return_5d", 0), is_percent=True), "num-cell"),
+                _cell(format_num(rel.get("return_20d", 0), is_percent=True), "num-cell"),
+                _cell(format_num(rel.get("z_score_1y")), "num-cell"),
+                _cell(lead, class_from_state(lead))
+            ]))
+    return "".join(rows)
+
+def _adapter_volatility(data: Dict) -> str:
+    rows = []
+    def _add(name, v):
+        if v: rows.append(_build_row([
+            _cell(name),
+            _cell(format_num(v.get("realized_vol_20d")), "num-cell"),
+            _cell(format_num(v.get("realized_vol_percentile_1y")), "num-cell"),
+            _cell(v.get("vol_state", v.get("trend_state", "--")), class_from_state(v.get("vol_state", v.get("trend_state"))))
+        ]))
+    _add("VIX Proxy (VIXY)", data.get("vix_proxy", {}).get("state"))
+    _add("MOVE Proxy (TLT Vol)", data.get("move_proxy", {}).get("state"))
+    for sk, sv in data.get("realized_volatility", {}).items(): _add(sk, sv)
+    for sk, sv in data.get("stress_flags", {}).items():
+        state = "TRIGGERED" if sv else "OK"
+        rows.append(_build_row([_cell(sk), _cell("--", "num-cell"), _cell("--", "num-cell"), _cell(state, class_from_state(state))]))
+    return "".join(rows)
+
+def _adapter_safety(data: Dict) -> str:
+    rows = []
+    def _add(name, v):
+        if v: rows.append(_build_row([
+            _cell(name),
+            _cell(v.get("state", v.get("trend_state", "--")), class_from_state(v.get("state", v.get("trend_state")))),
+            _cell(v.get("stretch_state", "--"), class_from_state(v.get("stretch_state"))),
+            _cell("--")
+        ]))
+    for sk, sv in data.get("treasury_proxies", {}).items(): _add(sk, sv)
+    _add("Gold Proxy (GLD)", data.get("gold_proxy"))
+    _add("Dollar Proxy (UUP)", data.get("dollar_proxy"))
+    _add("JPY Proxy", data.get("jpy_proxy"))
+    for sk, sv in data.get("defensive_vs_cyclical", {}).items(): _add(sk, sv)
+    return "".join(rows)
+
+def _adapter_cross_asset(data: Dict) -> str:
+    rows = []
+    for sk, v in data.items():
+        if isinstance(v, dict): rows.append(_build_row([
+            _cell(sk),
+            _cell(format_num(v.get("latest_ratio")), "num-cell"),
+            _cell(format_num(v.get("return_5d", 0), is_percent=True), "num-cell"),
+            _cell(format_num(v.get("z_score_1y")), "num-cell"),
+            _cell(v.get("state", "--"), class_from_state(v.get("state")))
+        ]))
+    return "".join(rows)
+
+def _adapter_breadth(data: Dict) -> str:
+    rows = []
+    def _add(name, v, pct):
+        rows.append(_build_row([_cell(name), _cell(str(v), "num-cell"), _cell(str(pct), "num-cell")]))
+    if data.get("tracked_count") is not None: _add("Tracked ETFs", data.get("tracked_count"), "--")
+    if data.get("above_50dma_count") is not None: _add("Above 50DMA", data.get("above_50dma_count"), format_num(data.get("above_50dma_pct", 0), is_percent=True))
+    if data.get("above_200dma_count") is not None: _add("Above 200DMA", data.get("above_200dma_count"), format_num(data.get("above_200dma_pct", 0), is_percent=True))
+    if data.get("positive_20d_trend_count") is not None: _add("Pos 20d Trend", data.get("positive_20d_trend_count"), format_num(data.get("positive_20d_trend_pct", 0), is_percent=True))
+    if data.get("sectors_above_50dma_count") is not None: _add("Sectors Above 50DMA", data.get("sectors_above_50dma_count"), "--")
+    if data.get("sectors_above_200dma_count") is not None: _add("Sectors Above 200DMA", data.get("sectors_above_200dma_count"), "--")
+    return "".join(rows)
+
+def _adapter_positioning(data: Dict) -> str:
+    rows = []
+    for sk, v in data.get("assets", {}).items():
+        if v: rows.append(_build_row([
+            _cell(sk),
+            _cell(format_num(v.get("rsi_14d")), "num-cell"),
+            _cell(format_num(v.get("distance_200dma", 0), is_percent=True), "num-cell"),
+            _cell(v.get("stretch_state", "--"), class_from_state(v.get("stretch_state")))
+        ]))
+    for sk, v in data.get("relationships", {}).items():
+        if v: rows.append(_build_row([
+            _cell(sk),
+            _cell("--", "num-cell"),
+            _cell(format_num(v.get("distance_50dma", 0), is_percent=True), "num-cell"),
+            _cell(v.get("stretch_state", "--"), class_from_state(v.get("stretch_state")))
+        ]))
+    return "".join(rows)
+
+# Registry maps section keys to (Title, Headers, AdapterFunc)
+CONTEXT_REGISTRY = [
+    ("ctx-macro", "macro_rates", "MACRO / RATES", ["SERIES", "VALUE", "5D Δ", "20D Δ", "Z", "STATE"], _adapter_macro_rates),
+    ("ctx-credit", "credit_liquidity", "CREDIT / LIQ", ["SERIES", "VALUE", "Z", "STATE", "STRETCH"], _adapter_credit_liquidity),
+    ("ctx-equity", "equity_index_state", "EQUITY", ["ASSET", "5D Δ", "20D Δ", "vs 200DMA", "Z", "STATE", "STRETCH"], _adapter_equity_index),
+    ("ctx-sectors", "sector_state", "SECTORS", ["SECTOR", "vs SPY 5D", "vs SPY 20D", "Z", "LEADERSHIP"], _adapter_sectors),
+    ("ctx-vol", "volatility_stress", "VOL / STRESS", ["ASSET", "REALIZED", "PCTILE", "STATE"], _adapter_volatility),
+    ("ctx-flight", "flight_to_safety", "SAFETY", ["ASSET", "STATE", "STRETCH", "DESC"], _adapter_safety),
+    ("ctx-cross", "cross_asset_relationships", "CROSS ASSET", ["PAIR", "RATIO", "5D Δ", "Z", "STATE"], _adapter_cross_asset),
+    ("ctx-breadth", "breadth_participation", "BREADTH", ["METRIC", "VALUE", "PCT"], _adapter_breadth),
+    ("ctx-positioning", "positioning_stretch", "POSITIONING", ["ASSET", "RSI", "vs 200DMA", "STRETCH"], _adapter_positioning)
+]
+
+def build_market_context_bindings(mc: Dict[str, Any]) -> List[Dict[str, Any]]:
+    tabs_html = ""
+    panels_html = ""
     
-    result_sections = []
-    
-    for idx, sec in enumerate(sections_def):
-        data = mc.get(sec["key"], {})
-        
-        # Check alerts for tab dots
+    for idx, (id_name, key, title, headers, adapter) in enumerate(CONTEXT_REGISTRY):
+        data = mc.get(key, {})
         has_data = len(data) > 0
         j_str = json.dumps(data).lower()
         has_alert = any(w in j_str for w in ["triggered", "breakdown", "high_vol", "falling_fast"])
         
-        if has_alert:
-            tab_html = f'<span class="color-red">⚠</span> {sec["title"]}'
-        elif has_data:
-            tab_html = f'<span class="color-green">●</span> {sec["title"]}'
-        else:
-            tab_html = f'<span class="color-muted">○</span> {sec["title"]}'
-            
-        rows = []
-        k = sec["key"]
+        dot = f'<span class="color-red">⚠</span>' if has_alert else (f'<span class="color-green">●</span>' if has_data else f'<span class="color-muted">○</span>')
+        active = "active" if idx == 0 else ""
+        tabs_html += f'<button class="tab-btn {active}" data-target="{id_name}">{dot} {title}</button>'
         
-        # Build normalized rows: [{"cells": [{"html": "...", "class": "..."}, ...]}, ...]
-        if k == "macro_rates":
-            def _add(name, v):
-                if not v: return
-                rows.append({"cells": [
-                    {"html": name},
-                    {"html": format_num(v.get("latest_bps", v.get("latest"))), "class": "num-cell"},
-                    {"html": format_num(v.get("change_5d_bps", v.get("change_5d"))), "class": "num-cell"},
-                    {"html": format_num(v.get("change_20d_bps", v.get("change_20d"))), "class": "num-cell"},
-                    {"html": format_num(v.get("z_score_1y")), "class": "num-cell"},
-                    {"html": v.get("state", "--"), "class": class_from_state(v.get("state"))}
-                ]})
-            for sk, sv in data.get("rates", {}).items(): _add(sk, sv)
-            for sk, sv in data.get("curve_spreads", {}).items(): _add(sk, sv)
-            for sk, sv in data.get("inflation_growth", {}).items(): _add(sk, sv)
-            if data.get("dollar_proxy", {}).get("state"): _add("Dollar (UUP)", data.get("dollar_proxy")["state"])
-            if data.get("real_rate_proxy", {}).get("state"): _add("Real Rate (10Y-BE)", data.get("real_rate_proxy")["state"])
-            
-        elif k == "credit_liquidity":
-            def _add(name, v):
-                if not v: return
-                rows.append({"cells": [
-                    {"html": name},
-                    {"html": format_num(v.get("latest", v.get("latest_ratio", v.get("latest_bps")))), "class": "num-cell"},
-                    {"html": format_num(v.get("z_score_1y", v.get("z_score"))), "class": "num-cell"},
-                    {"html": v.get("state", "--"), "class": class_from_state(v.get("state"))},
-                    {"html": v.get("stretch_state", "--"), "class": class_from_state(v.get("stretch_state"))}
-                ]})
-            if data.get("ig_oas"): _add("IG OAS", data.get("ig_oas"))
-            if data.get("hy_oas"): _add("HY OAS", data.get("hy_oas"))
-            if data.get("loan_proxy"): _add("Loan Proxy (BKLN)", data.get("loan_proxy"))
-            for sk, sv in data.get("credit_etf_relationships", {}).items(): _add(sk, sv)
-            for sk, sv in data.get("liquidity_sensitive_proxies", {}).items(): _add(sk, sv)
-            
-        elif k == "equity_index_state":
-            for sk, v in data.items():
-                if not v or not isinstance(v, dict): continue
-                rows.append({"cells": [
-                    {"html": sk},
-                    {"html": format_num(v.get("return_5d", 0), is_percent=True), "class": "num-cell"},
-                    {"html": format_num(v.get("return_20d", 0), is_percent=True), "class": "num-cell"},
-                    {"html": format_num(v.get("distance_200dma", 0), is_percent=True), "class": "num-cell"},
-                    {"html": format_num(v.get("z_score_1y")), "class": "num-cell"},
-                    {"html": v.get("trend_state", "--"), "class": class_from_state(v.get("trend_state"))},
-                    {"html": v.get("stretch_state", "--"), "class": class_from_state(v.get("stretch_state"))}
-                ]})
-                
-        elif k == "sector_state":
-            for sk, v in data.items():
-                if not v or not isinstance(v, dict): continue
-                rel = v.get("relative_to_spy", {})
-                lead = "YES" if v.get("leadership_flag") else ("LAG" if v.get("laggard_flag") else "--")
-                rows.append({"cells": [
-                    {"html": sk},
-                    {"html": format_num(rel.get("return_5d", 0), is_percent=True), "class": "num-cell"},
-                    {"html": format_num(rel.get("return_20d", 0), is_percent=True), "class": "num-cell"},
-                    {"html": format_num(rel.get("z_score_1y")), "class": "num-cell"},
-                    {"html": lead, "class": class_from_state(lead)}
-                ]})
-                
-        elif k == "volatility_stress":
-            def _add(name, v):
-                if not v: return
-                rows.append({"cells": [
-                    {"html": name},
-                    {"html": format_num(v.get("realized_vol_20d")), "class": "num-cell"},
-                    {"html": format_num(v.get("realized_vol_percentile_1y")), "class": "num-cell"},
-                    {"html": v.get("vol_state", v.get("trend_state", "--")), "class": class_from_state(v.get("vol_state", v.get("trend_state")))}
-                ]})
-            if data.get("vix_proxy", {}).get("state"): _add("VIX Proxy (VIXY)", data.get("vix_proxy")["state"])
-            if data.get("move_proxy", {}).get("state"): _add("MOVE Proxy (TLT Vol)", data.get("move_proxy")["state"])
-            for sk, sv in data.get("realized_volatility", {}).items(): _add(sk, sv)
-            for sk, sv in data.get("stress_flags", {}).items():
-                text = "TRIGGERED" if sv else "OK"
-                rows.append({"cells": [
-                    {"html": sk},
-                    {"html": "--", "class": "num-cell"},
-                    {"html": "--", "class": "num-cell"},
-                    {"html": text, "class": class_from_state(text)}
-                ]})
-                
-        elif k == "flight_to_safety":
-            def _add(name, v):
-                if not v: return
-                rows.append({"cells": [
-                    {"html": name},
-                    {"html": v.get("state", v.get("trend_state", "--")), "class": class_from_state(v.get("state", v.get("trend_state")))},
-                    {"html": v.get("stretch_state", "--"), "class": class_from_state(v.get("stretch_state"))},
-                    {"html": "--"}
-                ]})
-            for sk, sv in data.get("treasury_proxies", {}).items(): _add(sk, sv)
-            if data.get("gold_proxy"): _add("Gold Proxy (GLD)", data.get("gold_proxy"))
-            if data.get("dollar_proxy"): _add("Dollar Proxy (UUP)", data.get("dollar_proxy"))
-            if data.get("jpy_proxy"): _add("JPY Proxy", data.get("jpy_proxy"))
-            for sk, sv in data.get("defensive_vs_cyclical", {}).items(): _add(sk, sv)
-                
-        elif k == "cross_asset_relationships":
-            for sk, v in data.items():
-                if not v or not isinstance(v, dict): continue
-                rows.append({"cells": [
-                    {"html": sk},
-                    {"html": format_num(v.get("latest_ratio")), "class": "num-cell"},
-                    {"html": format_num(v.get("return_5d", 0), is_percent=True), "class": "num-cell"},
-                    {"html": format_num(v.get("z_score_1y")), "class": "num-cell"},
-                    {"html": v.get("state", "--"), "class": class_from_state(v.get("state"))}
-                ]})
-                
-        elif k == "breadth_participation":
-            def _add(name, v, pct):
-                rows.append({"cells": [
-                    {"html": name},
-                    {"html": str(v), "class": "num-cell"},
-                    {"html": str(pct), "class": "num-cell"}
-                ]})
-            if data.get("tracked_count") is not None: _add("Tracked ETFs", data.get("tracked_count"), "--")
-            if data.get("above_50dma_count") is not None: _add("Above 50DMA", data.get("above_50dma_count"), format_num(data.get("above_50dma_pct", 0), is_percent=True))
-            if data.get("above_200dma_count") is not None: _add("Above 200DMA", data.get("above_200dma_count"), format_num(data.get("above_200dma_pct", 0), is_percent=True))
-            if data.get("positive_20d_trend_count") is not None: _add("Pos 20d Trend", data.get("positive_20d_trend_count"), format_num(data.get("positive_20d_trend_pct", 0), is_percent=True))
-            if data.get("sectors_above_50dma_count") is not None: _add("Sectors Above 50DMA", data.get("sectors_above_50dma_count"), "--")
-            if data.get("sectors_above_200dma_count") is not None: _add("Sectors Above 200DMA", data.get("sectors_above_200dma_count"), "--")
-            
-        elif k == "positioning_stretch":
-            for sk, v in data.get("assets", {}).items():
-                if not v: continue
-                rows.append({"cells": [
-                    {"html": sk},
-                    {"html": format_num(v.get("rsi_14d")), "class": "num-cell"},
-                    {"html": format_num(v.get("distance_200dma", 0), is_percent=True), "class": "num-cell"},
-                    {"html": v.get("stretch_state", "--"), "class": class_from_state(v.get("stretch_state"))}
-                ]})
-            for sk, v in data.get("relationships", {}).items():
-                if not v: continue
-                rows.append({"cells": [
-                    {"html": sk},
-                    {"html": "--", "class": "num-cell"},
-                    {"html": format_num(v.get("distance_50dma", 0), is_percent=True), "class": "num-cell"},
-                    {"html": v.get("stretch_state", "--"), "class": class_from_state(v.get("stretch_state"))}
-                ]})
-                
-        result_sections.append({
-            "id": sec["id"],
-            "title": sec["title"],
-            "headers": sec["headers"],
-            "tab_html": tab_html,
-            "rows": rows,
-            "is_active": idx == 0,
-            "brain_hooks": _get_brain_hooks()
-        })
+        pHtml = f'<div class="tab-pane {active}" id="{id_name}">'
+        pHtml += '<table class="dense-table data-table"><thead><tr>' + "".join([f"<th>{h}</th>" for h in headers]) + "</tr></thead><tbody>"
         
-    return result_sections
+        rows_html = adapter(data)
+        if not rows_html:
+            rows_html = f"<tr><td colspan='{len(headers)}'>No data available</td></tr>"
+            
+        panels_html += pHtml + rows_html + "</tbody></table></div>"
 
+    if not mc:
+        panels_html = "<div class='panel-content'>Context data unavailable.</div>"
+
+    return [
+        _bind("context-tabs", html=tabs_html),
+        _bind("context-content", html=panels_html)
+    ]
 
 def build_terminal_payload(
     health: Dict[str, Any],
@@ -451,19 +394,24 @@ def build_terminal_payload(
     prev: Dict[str, Any],
     context: Dict[str, Any]
 ) -> Dict[str, Any]:
-    """Builds the composite payload for the entire terminal UI."""
+    """Builds the composite normalized binding payload for the entire terminal UI."""
+    bindings = []
+    bindings.extend(build_status_strip_bindings(health, struct, prev))
+    bindings.extend(build_structural_summary_bindings(struct))
+    bindings.extend(build_preview_summary_bindings(prev))
+    bindings.extend(build_health_summary_bindings(health, struct))
+    bindings.extend(build_notable_changes_bindings(struct))
+    
     mc_data = context.get("market_context", context)
+    bindings.extend(build_market_context_bindings(mc_data))
+    
     return {
-        "status_strip": build_status_strip(health, struct, prev),
-        "structural_summary": build_structural_summary(struct),
-        "preview_summary": build_preview_summary(prev),
-        "health_summary": build_health_summary(health, struct),
-        "notable_changes": build_notable_changes(struct),
-        "market_context": build_market_context(mc_data),
+        "bindings": bindings,
         "audit": {
             "health": health,
             "struct": struct,
             "prev": prev,
             "context": context
-        }
+        },
+        "brain_hooks": _get_brain_hooks()
     }
