@@ -447,6 +447,11 @@ def _format_llm_brief_html(brief: Dict[str, Any]) -> str:
     for key in ["what_matters", "risks", "supports", "watch_next", "caveats"]:
         items = sections.get(key, [])
         if items:
+            if isinstance(items, str):
+                items = [items]
+            elif isinstance(items, dict):
+                items = [f"{k}: {v}" for k, v in items.items()]
+                
             title = key.replace("_", " ").upper()
             html += f'<div style="color: var(--text-main); font-weight: bold; margin-top: 6px;">{title}</div>'
             html += '<ul style="margin: 2px 0 8px 0; padding-left: 16px;">'
