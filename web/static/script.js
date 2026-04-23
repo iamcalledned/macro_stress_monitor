@@ -140,16 +140,29 @@ document.addEventListener("DOMContentLoaded", () => {
         if(struct && !struct.error) {
             document.getElementById("ss-score").textContent = struct.composite_score;
             document.getElementById("ss-score").className = `big-score ${getEnvTextColor(struct.composite_score)}`;
-            document.getElementById("ss-headline").textContent = struct.headline_summary || "--";
-            document.getElementById("ss-regime").textContent = struct.regime || "--";
-            document.getElementById("ss-drivers").textContent = (struct.primary_drivers || []).join(", ") || "None";
+            
+            const regimeStr = struct.regime || struct.regime_label || "--";
+            document.getElementById("ss-regime").textContent = regimeStr;
+            document.getElementById("ss-regime").className = `summary-line ${classFromState(regimeStr)}`;
+            
+            let drivers = struct.primary_drivers || [];
+            if(struct.signal_summary && struct.signal_summary.primary_driver) {
+                drivers = struct.signal_summary.primary_driver;
+            } else if(Array.isArray(drivers)) {
+                drivers = drivers.join(", ");
+            } else if (typeof drivers === 'object' && drivers !== null) {
+                drivers = drivers.one_line || JSON.stringify(drivers);
+            }
+            document.getElementById("ss-drivers").textContent = (typeof drivers === "string" ? drivers.toUpperCase() : "NONE");
             
             let dText = "--";
+            let dClass = "val-neutral";
             if(struct.delta && struct.delta.available) {
-                dText = `${struct.delta.score_change > 0 ? '+' : ''}${struct.delta.score_change} pts`;
-                if(struct.delta.regime_changed) dText += ` (Regime changed)`;
+                dText = `${struct.delta.score_change > 0 ? '+' : ''}${struct.delta.score_change}`;
+                dClass = struct.delta.score_change > 0 ? "val-negative" : (struct.delta.score_change < 0 ? "val-positive" : "val-neutral");
             }
             document.getElementById("ss-delta").textContent = dText;
+            document.getElementById("ss-delta").className = dClass;
         }
 
         // Preview Summary
@@ -171,7 +184,7 @@ document.addEventListener("DOMContentLoaded", () => {
             document.getElementById("ps-delta").textContent = pdText;
         }
 
-        // Health
+        // Health & Mini Panels
         if(health && !health.error) {
             document.getElementById("hl-struc-age").textContent = `${Math.round((health.structural_age_seconds || 0)/60)}m`;
             document.getElementById("hl-prev-age").textContent = `${Math.round((health.preview_age_seconds || 0)/60)}m`;
@@ -183,9 +196,35 @@ document.addEventListener("DOMContentLoaded", () => {
                 document.getElementById("hl-exec").textContent = `${formatNum(struct.execution.total_seconds, 2)}s`;
             }
             if(struct && struct.data_quality) {
-                document.getElementById("hl-missing-crit").textContent = struct.data_quality.critical_missing ? "YES" : "NO";
+                const crit = struct.data_quality.critical_missing ? "YES" : "OK";
+                document.getElementById("hl-missing-crit").textContent = crit;
                 document.getElementById("hl-missing-crit").className = struct.data_quality.critical_missing ? "color-red" : "color-green";
                 document.getElementById("hl-missing-noncrit").textContent = struct.data_quality.noncritical_missing_count || "0";
+                
+                // Mini Panels
+                const conf = struct.state_confidence?.confidence_level || struct.confidence || "N/A";
+                document.getElementById("mini-conf").textContent = conf;
+                document.getElementById("mini-conf").className = classFromState(conf.includes("HIGH") ? "ok" : (conf.includes("LOW") ? "risk" : "mixed"));
+                
+                const q = struct.data_quality.completeness_score !== undefined 
+                    ? `${Math.round(struct.data_quality.completeness_score * 100)}%` : "N/A";
+                document.getElementById("mini-qual").textContent = q;
+                document.getElementById("mini-qual").className = (struct.data_quality.completeness_score > 0.9) ? "color-green" : "color-yellow";
+            }
+            
+            // Mini Flags
+            if(struct && struct.anomaly_flags) {
+                const flgs = [];
+                if(struct.is_stale) flgs.push("STALE");
+                if(struct.anomaly_flags.extreme_move) flgs.push("EXT_MOVE");
+                if(struct.anomaly_flags.volatility_spike) flgs.push("VOL_SPIKE");
+                if(struct.anomaly_flags.multi_asset_divergence) flgs.push("DIVERGENCE");
+                
+                if(flgs.length > 0) {
+                    document.getElementById("mini-flags").innerHTML = flgs.map(f => `<div class="color-red">⚠ ${f}</div>`).join("");
+                } else {
+                    document.getElementById("mini-flags").innerHTML = `<div class="color-green">OK</div>`;
+                }
             }
         }
 
@@ -194,18 +233,18 @@ document.addEventListener("DOMContentLoaded", () => {
         let dHtml = "";
         if(struct && struct.delta && struct.delta.available) {
             if(struct.delta.regime_changed) {
-                dHtml += `<li>Regime changed from <strong>${struct.delta.previous_regime}</strong> to <strong>${struct.delta.current_regime}</strong></li>`;
+                dHtml += `<li class="val-warning" style="margin-bottom: 4px;">+ REGIME: ${struct.delta.previous_regime} -> ${struct.delta.current_regime}</li>`;
             }
             const stc = struct.delta.component_state_changes || {};
             for(const [k,v] of Object.entries(stc)) {
-                dHtml += `<li>${k}: state changed ${v.previous} -> ${v.current}</li>`;
+                dHtml += `<li style="margin-bottom: 2px;">+ ${String(k).toUpperCase()}: <span class="color-muted">${v.previous}</span> -> <span class="${classFromState(v.current)}">${v.current}</span></li>`;
             }
             const ssc = struct.delta.component_subscore_changes || {};
             for(const [k,v] of Object.entries(ssc)) {
-                dHtml += `<li>${k}: subscore ${v.previous} -> ${v.current}</li>`;
+                dHtml += `<li style="margin-bottom: 2px;">+ ${String(k).toUpperCase()}: <span class="color-muted">${v.previous}</span> -> <span>${v.current}</span></li>`;
             }
         }
-        if(!dHtml) dHtml = "<li>No significant structural deltas.</li>";
+        if(!dHtml) dHtml = "<li class='color-muted'>NO MATERIAL CHANGE</li>";
         dList.innerHTML = dHtml;
 
         // Market Context
@@ -222,19 +261,33 @@ document.addEventListener("DOMContentLoaded", () => {
         ctc.innerHTML = "";
         
         const sections = [
-            { id: "ctx-macro", key: "macro_rates", title: "Macro / Rates", headers: ["Series", "Value", "5d", "20d", "Z-Score", "State"] },
-            { id: "ctx-credit", key: "credit_liquidity", title: "Credit / Liquidity", headers: ["Series", "Value", "Z-Score", "State", "Stretch"] },
-            { id: "ctx-equity", key: "equity_index_state", title: "Equity Index", headers: ["Asset", "Return 5d", "Return 20d", "vs 200DMA", "Z-Score", "State", "Stretch"] },
-            { id: "ctx-sectors", key: "sector_state", title: "Sectors", headers: ["Sector", "vs SPY 5d", "vs SPY 20d", "Z-Score", "Leadership"] },
-            { id: "ctx-vol", key: "volatility_stress", title: "Volatility / Stress", headers: ["Asset", "Realized Vol", "Percentile", "State"] },
-            { id: "ctx-flight", key: "flight_to_safety", title: "Flight to Safety", headers: ["Asset", "State", "Stretch", "Description"] },
-            { id: "ctx-cross", key: "cross_asset_relationships", title: "Cross Asset", headers: ["Pair", "Ratio", "5d", "Z-Score", "State"] },
-            { id: "ctx-breadth", key: "breadth_participation", title: "Breadth", headers: ["Metric", "Value", "Pct"] },
-            { id: "ctx-positioning", key: "positioning_stretch", title: "Positioning", headers: ["Asset", "RSI", "vs 200DMA", "Stretch"] }
+            { id: "ctx-macro", key: "macro_rates", title: "MACRO / RATES", headers: ["SERIES", "VALUE", "5D Δ", "20D Δ", "Z", "STATE"] },
+            { id: "ctx-credit", key: "credit_liquidity", title: "CREDIT / LIQ", headers: ["SERIES", "VALUE", "Z", "STATE", "STRETCH"] },
+            { id: "ctx-equity", key: "equity_index_state", title: "EQUITY", headers: ["ASSET", "5D Δ", "20D Δ", "vs 200DMA", "Z", "STATE", "STRETCH"] },
+            { id: "ctx-sectors", key: "sector_state", title: "SECTORS", headers: ["SECTOR", "vs SPY 5D", "vs SPY 20D", "Z", "LEADERSHIP"] },
+            { id: "ctx-vol", key: "volatility_stress", title: "VOL / STRESS", headers: ["ASSET", "REALIZED", "PCTILE", "STATE"] },
+            { id: "ctx-flight", key: "flight_to_safety", title: "SAFETY", headers: ["ASSET", "STATE", "STRETCH", "DESC"] },
+            { id: "ctx-cross", key: "cross_asset_relationships", title: "CROSS ASSET", headers: ["PAIR", "RATIO", "5D Δ", "Z", "STATE"] },
+            { id: "ctx-breadth", key: "breadth_participation", title: "BREADTH", headers: ["METRIC", "VALUE", "PCT"] },
+            { id: "ctx-positioning", key: "positioning_stretch", title: "POSITIONING", headers: ["ASSET", "RSI", "vs 200DMA", "STRETCH"] }
         ];
 
         sections.forEach((sec, idx) => {
             const data = mc[sec.key] || {};
+            
+            // Tab update with dot
+            const btn = document.querySelector(`.tab-btn[data-target="${sec.id}"]`);
+            if(btn) {
+                let hasAlert = false;
+                let hasData = Object.keys(data).length > 0;
+                const jStr = JSON.stringify(data).toLowerCase();
+                if(jStr.includes("triggered") || jStr.includes("breakdown") || jStr.includes("high_vol") || jStr.includes("falling_fast")) {
+                    hasAlert = true;
+                }
+                let dot = hasAlert ? `<span class="color-red">⚠</span>` : (hasData ? `<span class="color-green">●</span>` : `<span class="color-muted">○</span>`);
+                btn.innerHTML = `${dot} ${sec.title}`;
+            }
+
             const active = idx === 0 ? "active" : "";
             let html = `<div class="tab-pane ${active}" id="${sec.id}">`;
             html += `<table class="dense-table data-table"><thead><tr>`;

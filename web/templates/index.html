@@ -9,9 +9,9 @@
     <div class="terminal-container">
         <!-- 1. Top status strip -->
         <header class="status-strip" id="status-strip">
-            <div class="strip-section">STRUCTURAL: <span id="ts-regime" class="badge">--</span> <span id="ts-score">--</span></div>
-            <div class="strip-section">PREVIEW: <span id="ts-preview" class="badge">--</span></div>
-            <div class="strip-section">QUALITY: <span id="ts-quality">--</span> | CONF: <span id="ts-conf">--</span></div>
+            <div class="strip-section">STRUCT: <span id="ts-regime" class="badge">--</span> <span id="ts-score">--</span></div>
+            <div class="strip-section">PREV: <span id="ts-preview" class="badge">--</span></div>
+            <div class="strip-section">CONF: <span id="ts-conf">--</span> | QUAL: <span id="ts-quality">--</span></div>
             <div class="strip-section">FLAGS: <span id="ts-flags">None</span></div>
             <div class="strip-section right">STRUC: <span id="ts-struc-time">--</span> | PREV: <span id="ts-prev-time">--</span></div>
         </header>
@@ -22,14 +22,11 @@
                 <!-- 3. Structural summary panel -->
                 <section class="panel">
                     <div class="panel-header">STRUCTURAL SUMMARY</div>
-                    <div class="panel-content">
+                    <div class="panel-content" style="text-align: center; padding: 12px 4px;">
                         <div class="big-score" id="ss-score">--</div>
-                        <div class="summary-line" id="ss-headline">Loading...</div>
-                        <table class="dense-table prop-table">
-                            <tr><td>Regime</td><td id="ss-regime">--</td></tr>
-                            <tr><td>Drivers</td><td id="ss-drivers">--</td></tr>
-                            <tr><td>Delta vs Prior</td><td id="ss-delta">--</td></tr>
-                        </table>
+                        <div class="summary-line" id="ss-regime" style="font-size: 16px; margin-bottom: 12px; text-transform: uppercase;">CALM</div>
+                        <div style="font-size: 11px; margin-bottom: 4px; color: var(--text-muted);">PRIMARY: <span id="ss-drivers" class="val-neutral" style="font-weight: bold; color: var(--text-main);">--</span></div>
+                        <div style="font-size: 11px; color: var(--text-muted);">DELTA: <span id="ss-delta" class="val-neutral" style="font-weight: bold; color: var(--text-main);">--</span></div>
                     </div>
                 </section>
 
@@ -53,11 +50,11 @@
                     <div class="panel-header">SYSTEM HEALTH</div>
                     <div class="panel-content">
                         <table class="dense-table prop-table">
-                            <tr><td>Struc Age</td><td id="hl-struc-age">--</td></tr>
-                            <tr><td>Prev Age</td><td id="hl-prev-age">--</td></tr>
-                            <tr><td>Execution</td><td id="hl-exec">--</td></tr>
-                            <tr><td>Missing Critical</td><td id="hl-missing-crit">--</td></tr>
-                            <tr><td>Missing Non-Crit</td><td id="hl-missing-noncrit">--</td></tr>
+                            <tr><td>CRITICAL</td><td id="hl-missing-crit" style="font-weight:bold;">--</td></tr>
+                            <tr><td>NON-CRIT</td><td id="hl-missing-noncrit" style="font-weight:bold;">--</td></tr>
+                            <tr><td>STRUC AGE</td><td id="hl-struc-age" style="font-weight:bold;">--</td></tr>
+                            <tr><td>PREV AGE</td><td id="hl-prev-age" style="font-weight:bold;">--</td></tr>
+                            <tr><td>EXEC TIME</td><td id="hl-exec" style="font-weight:bold;">--</td></tr>
                         </table>
                     </div>
                 </section>
@@ -66,7 +63,7 @@
                 <section class="panel">
                     <div class="panel-header">NOTABLE CHANGES</div>
                     <div class="panel-content" id="delta-content">
-                        <ul id="delta-list" style="margin:0; padding-left:16px; font-size:12px; color:var(--text-muted);">
+                        <ul id="delta-list" style="margin:0; padding-left:0; list-style-type:none; font-size:11px;">
                             <li>Loading...</li>
                         </ul>
                     </div>
@@ -75,25 +72,46 @@
 
             <!-- Right Column: Market Context Navigator -->
             <div class="col-right">
-                <!-- 5. Market context navigator -->
-                <section class="panel flex-panel">
-                    <div class="panel-header">MARKET CONTEXT NAVIGATOR</div>
-                    <div class="tabs" id="context-tabs">
-                        <button class="tab-btn active" data-target="ctx-macro">MACRO / RATES</button>
-                        <button class="tab-btn" data-target="ctx-credit">CREDIT / LIQ</button>
-                        <button class="tab-btn" data-target="ctx-equity">EQUITY</button>
-                        <button class="tab-btn" data-target="ctx-sectors">SECTORS</button>
-                        <button class="tab-btn" data-target="ctx-vol">VOL / STRESS</button>
-                        <button class="tab-btn" data-target="ctx-flight">SAFETY / DEF</button>
-                        <button class="tab-btn" data-target="ctx-cross">CROSS ASSET</button>
-                        <button class="tab-btn" data-target="ctx-breadth">BREADTH</button>
-                        <button class="tab-btn" data-target="ctx-positioning">POSITIONING</button>
-                    </div>
-                    
-                    <div class="tab-content-container" id="context-content">
-                        <!-- 6. Dense inspection tables populated here -->
-                    </div>
-                </section>
+                <div style="display: flex; flex: 1; gap: 4px; min-height: 0;">
+                    <!-- 5. Market context navigator -->
+                    <section class="panel flex-panel" style="flex: 3;">
+                        <div class="panel-header">MARKET CONTEXT NAVIGATOR</div>
+                        <div class="tabs" id="context-tabs">
+                            <button class="tab-btn active" data-target="ctx-macro">MACRO / RATES</button>
+                            <button class="tab-btn" data-target="ctx-credit">CREDIT / LIQ</button>
+                            <button class="tab-btn" data-target="ctx-equity">EQUITY</button>
+                            <button class="tab-btn" data-target="ctx-sectors">SECTORS</button>
+                            <button class="tab-btn" data-target="ctx-vol">VOL / STRESS</button>
+                            <button class="tab-btn" data-target="ctx-flight">SAFETY / DEF</button>
+                            <button class="tab-btn" data-target="ctx-cross">CROSS ASSET</button>
+                            <button class="tab-btn" data-target="ctx-breadth">BREADTH</button>
+                            <button class="tab-btn" data-target="ctx-positioning">POSITION</button>
+                        </div>
+                        
+                        <div class="tab-content-container" id="context-content">
+                            <!-- 6. Dense inspection tables populated here -->
+                        </div>
+                    </section>
+
+                    <!-- Mini Panels for right space -->
+                    <section class="panel" style="flex: 1; min-width: 220px; max-width: 300px;">
+                        <div class="panel-header">QUICK VIEW</div>
+                        <div class="panel-content">
+                            <div style="margin-bottom: 12px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">
+                                <div style="color: var(--text-muted); margin-bottom: 4px; font-size: 10px;">CONFIDENCE</div>
+                                <div id="mini-conf" class="val-positive" style="font-size: 14px; font-weight: bold;">--</div>
+                            </div>
+                            <div style="margin-bottom: 12px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">
+                                <div style="color: var(--text-muted); margin-bottom: 4px; font-size: 10px;">DATA QUALITY</div>
+                                <div id="mini-qual" class="val-positive" style="font-size: 14px; font-weight: bold;">--</div>
+                            </div>
+                            <div style="margin-bottom: 12px;">
+                                <div style="color: var(--text-muted); margin-bottom: 4px; font-size: 10px;">ANOMALY FLAGS</div>
+                                <div id="mini-flags" class="val-neutral" style="font-weight: bold; line-height: 1.5;">--</div>
+                            </div>
+                        </div>
+                    </section>
+                </div>
 
                 <!-- 8. Raw audit drilldown -->
                 <section class="panel raw-audit-panel">
