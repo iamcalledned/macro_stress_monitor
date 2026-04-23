@@ -84,7 +84,7 @@ def generate_morning_brief() -> Dict[str, Any]:
     payload = _format_payload("morning_brief", ctx["struct"], ctx["prev"], result)
     
     if payload.get("llm_meta", {}).get("success", True) and "error" not in payload:
-        redis.redis.set("msm:brief:morning:latest", __import__("json").dumps(payload))
+        redis.client.set("msm:brief:morning:latest", __import__("json").dumps(payload))
         
     return payload
 
@@ -100,20 +100,20 @@ def generate_evening_wrap() -> Dict[str, Any]:
     payload = _format_payload("evening_wrap", ctx["struct"], ctx["prev"], result)
     
     if payload.get("llm_meta", {}).get("success", True) and "error" not in payload:
-        redis.redis.set("msm:brief:evening:latest", __import__("json").dumps(payload))
+        redis.client.set("msm:brief:evening:latest", __import__("json").dumps(payload))
         
     return payload
 
 def get_cached_morning_brief() -> Optional[Dict[str, Any]]:
     redis = _get_redis()
-    val = redis.redis.get("msm:brief:morning:latest")
+    val = redis.client.get("msm:brief:morning:latest")
     if val:
         return __import__("json").loads(val)
     return None
 
 def get_cached_evening_wrap() -> Optional[Dict[str, Any]]:
     redis = _get_redis()
-    val = redis.redis.get("msm:brief:evening:latest")
+    val = redis.client.get("msm:brief:evening:latest")
     if val:
         return __import__("json").loads(val)
     return None
