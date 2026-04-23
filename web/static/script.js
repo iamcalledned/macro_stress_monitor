@@ -53,6 +53,16 @@ document.addEventListener("DOMContentLoaded", () => {
         return "color-red";
     }
 
+    function classFromState(state) {
+        if(!state) return "";
+        const s = String(state).toLowerCase();
+        if(s.includes("ok") || s.includes("calm") || s.includes("normal") || s.includes("stable") || s.includes("safe") || s.includes("positive") || s.includes("uptrend") || s.includes("leadership") || s.includes("outperforming") || s === "yes") return "val-positive";
+        if(s.includes("elevated") || s.includes("watch") || s.includes("mixed") || s.includes("lag") || s.includes("range") || s.includes("flat")) return "val-warning";
+        if(s.includes("breakdown") || s.includes("high") || s.includes("triggered") || s.includes("fast") || s.includes("risk") || s.includes("stress") || s.includes("underperforming") || s.includes("downtrend") || s.includes("overbought") || s.includes("oversold")) return "val-negative";
+        if(s.includes("unavailable") || s.includes("insufficient") || s.includes("--")) return "color-muted";
+        return "val-neutral";
+    }
+
     async function fetchData() {
         try {
             const [healthRes, structRes, prevRes, ctxRes] = await Promise.all([
@@ -245,7 +255,7 @@ document.addEventListener("DOMContentLoaded", () => {
                             <td class="num-cell">${formatNum(v.change_5d_bps ?? v.change_5d)}</td>
                             <td class="num-cell">${formatNum(v.change_20d_bps ?? v.change_20d)}</td>
                             <td class="num-cell">${formatNum(v.z_score_1y)}</td>
-                            <td>${v.state || '--'}</td>
+                            <td class="${classFromState(v.state)}">${v.state || '--'}</td>
                         </tr>`);
                     };
                     if(data.rates) Object.entries(data.rates).forEach(([k,v]) => addRow(k, v));
@@ -260,8 +270,8 @@ document.addEventListener("DOMContentLoaded", () => {
                             <td>${k}</td>
                             <td class="num-cell">${formatNum(v.latest ?? v.latest_ratio ?? v.latest_bps)}</td>
                             <td class="num-cell">${formatNum(v.z_score_1y ?? v.z_score)}</td>
-                            <td>${v.state || '--'}</td>
-                            <td>${v.stretch_state || '--'}</td>
+                            <td class="${classFromState(v.state)}">${v.state || '--'}</td>
+                            <td class="${classFromState(v.stretch_state)}">${v.stretch_state || '--'}</td>
                         </tr>`);
                     };
                     if(data.ig_oas) addRow("IG OAS", data.ig_oas);
@@ -278,8 +288,8 @@ document.addEventListener("DOMContentLoaded", () => {
                             <td class="num-cell">${formatNum((v.return_20d||0)*100)}%</td>
                             <td class="num-cell">${formatNum((v.distance_200dma||0)*100)}%</td>
                             <td class="num-cell">${formatNum(v.z_score_1y)}</td>
-                            <td>${v.trend_state || '--'}</td>
-                            <td>${v.stretch_state || '--'}</td>
+                            <td class="${classFromState(v.trend_state)}">${v.trend_state || '--'}</td>
+                            <td class="${classFromState(v.stretch_state)}">${v.stretch_state || '--'}</td>
                         </tr>`);
                     });
                 } else if(sec.key === "sector_state") {
@@ -291,7 +301,7 @@ document.addEventListener("DOMContentLoaded", () => {
                             <td class="num-cell">${formatNum((rel.return_5d||0)*100)}%</td>
                             <td class="num-cell">${formatNum((rel.return_20d||0)*100)}%</td>
                             <td class="num-cell">${formatNum(rel.z_score_1y)}</td>
-                            <td>${v.leadership_flag ? "YES" : (v.laggard_flag ? "LAG" : "--")}</td>
+                            <td class="${classFromState(v.leadership_flag ? 'YES' : (v.laggard_flag ? 'LAG' : '--'))}">${v.leadership_flag ? "YES" : (v.laggard_flag ? "LAG" : "--")}</td>
                         </tr>`);
                     });
                 } else if(sec.key === "volatility_stress") {
@@ -301,7 +311,7 @@ document.addEventListener("DOMContentLoaded", () => {
                             <td>${k}</td>
                             <td class="num-cell">${formatNum(v.realized_vol_20d)}</td>
                             <td class="num-cell">${formatNum(v.realized_vol_percentile_1y)}</td>
-                            <td>${v.vol_state || v.trend_state || '--'}</td>
+                            <td class="${classFromState(v.vol_state || v.trend_state)}">${v.vol_state || v.trend_state || '--'}</td>
                         </tr>`);
                     };
                     if(data.vix_proxy?.state) addRow("VIX Proxy (VIXY)", data.vix_proxy.state);
@@ -309,7 +319,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     if(data.realized_volatility) Object.entries(data.realized_volatility).forEach(([k,v]) => addRow(k, v));
                     if(data.stress_flags) {
                         Object.entries(data.stress_flags).forEach(([k,v]) => {
-                            rows.push(`<tr><td>${k}</td><td class="num-cell">--</td><td class="num-cell">--</td><td>${v ? "TRIGGERED" : "OK"}</td></tr>`);
+                            rows.push(`<tr><td>${k}</td><td class="num-cell">--</td><td class="num-cell">--</td><td class="${classFromState(v ? 'TRIGGERED' : 'OK')}">${v ? "TRIGGERED" : "OK"}</td></tr>`);
                         });
                     }
                 } else if(sec.key === "flight_to_safety") {
@@ -317,8 +327,8 @@ document.addEventListener("DOMContentLoaded", () => {
                         if(!v) return;
                         rows.push(`<tr>
                             <td>${k}</td>
-                            <td>${v.state || v.trend_state || '--'}</td>
-                            <td>${v.stretch_state || '--'}</td>
+                            <td class="${classFromState(v.state || v.trend_state)}">${v.state || v.trend_state || '--'}</td>
+                            <td class="${classFromState(v.stretch_state)}">${v.stretch_state || '--'}</td>
                             <td>--</td>
                         </tr>`);
                     };
@@ -335,7 +345,7 @@ document.addEventListener("DOMContentLoaded", () => {
                             <td class="num-cell">${formatNum(v.latest_ratio)}</td>
                             <td class="num-cell">${formatNum((v.return_5d||0)*100)}%</td>
                             <td class="num-cell">${formatNum(v.z_score_1y)}</td>
-                            <td>${v.state || '--'}</td>
+                            <td class="${classFromState(v.state)}">${v.state || '--'}</td>
                         </tr>`);
                     });
                 } else if(sec.key === "breadth_participation") {
@@ -359,7 +369,7 @@ document.addEventListener("DOMContentLoaded", () => {
                             <td>${k}</td>
                             <td class="num-cell">${formatNum(v.rsi_14d)}</td>
                             <td class="num-cell">${formatNum((v.distance_200dma||0)*100)}%</td>
-                            <td>${v.stretch_state || '--'}</td>
+                            <td class="${classFromState(v.stretch_state)}">${v.stretch_state || '--'}</td>
                         </tr>`);
                     });
                     if(data.relationships) Object.entries(data.relationships).forEach(([k,v]) => {
@@ -368,7 +378,7 @@ document.addEventListener("DOMContentLoaded", () => {
                             <td>${k}</td>
                             <td class="num-cell">--</td>
                             <td class="num-cell">${formatNum((v.distance_50dma||0)*100)}%</td>
-                            <td>${v.stretch_state || '--'}</td>
+                            <td class="${classFromState(v.stretch_state)}">${v.stretch_state || '--'}</td>
                         </tr>`);
                     });
                 }
