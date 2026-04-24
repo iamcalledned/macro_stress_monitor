@@ -1,0 +1,51 @@
+{
+  "dashboard_name": "Bottom Sniffer Dashboard",
+  "quote_watchlist": [
+    "SPY",
+    "QQQ",
+    "IWM",
+    "DIA",
+    "XLF",
+    "KRE",
+    "TLT",
+    "GLD"
+  ],
+  "categories": [
+    {
+      "category": "Macro Crack Monitors",
+      "indicators": [
+        "2-Year Yield",
+        "10-Year Yield",
+        "30Y Yield",
+        "UST 2s-10s Curve",
+        "UST 3m-10y Curve",
+        "Fed Funds Rate",
+        "Unemployment Rate",
+        "CPI (YoY)",
+        "Retail Sales"
+      ]
+    },
+    {
+      "category": "Market Stress Indicators",
+      "indicators": [
+        "VIX",
+        "MOVE Index",
+        "VVIX",
+        "VXTLT",
+        "HY Spreads",
+        "Skew Index",
+        "SOFR Spread"
+      ]
+    },
+    {
+      "category": "Flight to Safety",
+      "indicators": [
+        "Gold",
+        "Bitcoin",
+        "USD Index",
+        "Treasury Demand (Bid/Cover)"
+      ]
+    }
+  ],
+  "baskets": []
+}

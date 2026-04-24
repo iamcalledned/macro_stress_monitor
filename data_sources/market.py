@@ -8,7 +8,7 @@ from urllib.request import urlopen
 from typing import List, Dict, Optional
 import pandas as pd
 
-POLYGON_API_KEY = os.getenv("POLYGON_API_KEY")
+POLYGON_API_KEY = os.getenv("POLYGON_API_KEY") or os.getenv("MASSIVE_API_KEY")
 POLYGON_BASE_URL = "https://api.polygon.io/v2/aggs/ticker"
 
 
@@ -23,6 +23,8 @@ def _fetch_polygon_agg(
     polygon_ticker: str,
     start_date: pd.Timestamp,
     end_date: pd.Timestamp,
+    multiplier: int = 1,
+    timespan: str = "day",
 ) -> Optional[pd.DataFrame]:
     if not POLYGON_API_KEY:
         return None
@@ -31,7 +33,7 @@ def _fetch_polygon_agg(
     end_str = pd.Timestamp(end_date).strftime("%Y-%m-%d")
     ticker_encoded = quote(polygon_ticker, safe="")
     url = (
-        f"{POLYGON_BASE_URL}/{ticker_encoded}/range/1/day/{start_str}/{end_str}"
+        f"{POLYGON_BASE_URL}/{ticker_encoded}/range/{int(multiplier)}/{timespan}/{start_str}/{end_str}"
         f"?adjusted=true&sort=asc&limit=50000&apiKey={POLYGON_API_KEY}"
     )
     with urlopen(url, timeout=30) as resp:
@@ -97,7 +99,7 @@ def get_market_data(
     for ticker in unique_tickers:
         polygon_ticker = _to_polygon_ticker(ticker)
         try:
-            ticker_data = _fetch_polygon_agg(polygon_ticker, start_date, end_date)
+            ticker_data = _fetch_polygon_agg(polygon_ticker, start_date, end_date, multiplier=1, timespan="day")
             if ticker_data is None or ticker_data.empty:
                 print(f"WARNING: No Polygon data found for ticker: {ticker} ({polygon_ticker})")
                 data[ticker] = None
@@ -109,3 +111,24 @@ def get_market_data(
             data[ticker] = None
 
     return data
+
+
+def get_daily_bars(ticker: str, start_date: pd.Timestamp, end_date: pd.Timestamp) -> Optional[pd.DataFrame]:
+    """Fetches daily OHLCV bars for one ticker."""
+    return _fetch_polygon_agg(_to_polygon_ticker(ticker), start_date, end_date, multiplier=1, timespan="day")
+
+
+def get_intraday_bars(
+    ticker: str,
+    start_date: pd.Timestamp,
+    end_date: pd.Timestamp,
+    interval_minutes: int = 1,
+) -> Optional[pd.DataFrame]:
+    """Fetches intraday OHLCV bars for one ticker."""
+    return _fetch_polygon_agg(
+        _to_polygon_ticker(ticker),
+        start_date,
+        end_date,
+        multiplier=max(1, int(interval_minutes)),
+        timespan="minute",
+    )

@@ -35,6 +35,8 @@ class RedisClient:
     LATEST_PREVIEW_RUN_ID_KEY = "msm:latest_preview_run_id"
     HEALTH_KEY = "msm:health"
     RUN_SNAPSHOT_PREFIX = "msm:run:"
+    QUOTE_PREFIX = "msm:quote:"
+    INTRADAY_PREFIX = "msm:intraday:"
     HISTORY_RETENTION = 400 # Keep last 400 data points
 
     def __init__(self, redis_url: Optional[str] = None):
@@ -204,3 +206,23 @@ class RedisClient:
     def write_health_snapshot(self, health: Dict[str, Any]):
         """Writes the compact system health record."""
         self.client.set(self.HEALTH_KEY, _json_dumps(health))
+
+    def _quote_key(self, symbol: str) -> str:
+        return f"{self.QUOTE_PREFIX}{symbol.upper()}"
+
+    def _intraday_key(self, symbol: str) -> str:
+        return f"{self.INTRADAY_PREFIX}{symbol.upper()}"
+
+    def get_quote(self, symbol: str) -> Optional[Dict[str, Any]]:
+        raw = self.client.get(self._quote_key(symbol))
+        return json.loads(raw) if raw else None
+
+    def write_quote(self, symbol: str, payload: Dict[str, Any], ttl_seconds: int = 60):
+        self.client.setex(self._quote_key(symbol), ttl_seconds, _json_dumps(payload))
+
+    def get_intraday(self, symbol: str) -> Optional[Dict[str, Any]]:
+        raw = self.client.get(self._intraday_key(symbol))
+        return json.loads(raw) if raw else None
+
+    def write_intraday(self, symbol: str, payload: Dict[str, Any], ttl_seconds: int = 60):
+        self.client.setex(self._intraday_key(symbol), ttl_seconds, _json_dumps(payload))

@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ symbol }} | Market Details</title>
+    <style>
+        :root {
+            color-scheme: dark;
+            --bg: #07111a;
+            --panel: #0f1d29;
+            --panel-2: #132535;
+            --line: #23384b;
+            --text: #e6edf3;
+            --muted: #8fa6bb;
+            --accent: #36d0ff;
+            --positive: #4ade80;
+            --negative: #f87171;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background:
+                radial-gradient(circle at top left, rgba(54, 208, 255, 0.14), transparent 24%),
+                linear-gradient(180deg, #081018 0%, #07111a 100%);
+            color: var(--text);
+            font-family: "Avenir Next", "Segoe UI", sans-serif;
+        }
+        .page {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 28px 20px 40px;
+        }
+        .topbar, .panel {
+            border: 1px solid var(--line);
+            border-radius: 20px;
+            background: rgba(15, 29, 41, 0.86);
+            backdrop-filter: blur(12px);
+        }
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            padding: 18px 22px;
+            margin-bottom: 18px;
+        }
+        .topbar a {
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 700;
+        }
+        h1 {
+            margin: 0;
+            font-size: clamp(2rem, 4vw, 3.1rem);
+        }
+        .subtitle {
+            margin-top: 8px;
+            color: var(--muted);
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 18px;
+            margin-bottom: 18px;
+        }
+        .panel {
+            padding: 20px;
+        }
+        .eyebrow {
+            margin: 0 0 16px;
+            color: var(--accent);
+            font-size: 0.78rem;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            font-weight: 800;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 14px;
+        }
+        .stat {
+            padding: 14px;
+            border-radius: 16px;
+            background: rgba(19, 37, 53, 0.78);
+            border: 1px solid rgba(35, 56, 75, 0.95);
+        }
+        .stat-label {
+            color: var(--muted);
+            font-size: 0.82rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+        .stat-value {
+            margin-top: 8px;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+        .chart-wrap {
+            height: 360px;
+            padding: 12px;
+            border-radius: 16px;
+            background: rgba(19, 37, 53, 0.72);
+            border: 1px solid rgba(35, 56, 75, 0.95);
+        }
+        #intraday-chart {
+            width: 100%;
+            height: 100%;
+        }
+        .positive { color: var(--positive); }
+        .negative { color: var(--negative); }
+        @media (max-width: 900px) {
+            .grid, .stats { grid-template-columns: 1fr; }
+            .topbar { flex-direction: column; align-items: flex-start; }
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <header class="topbar">
+            <div>
+                <h1>{{ symbol }}</h1>
+                <div class="subtitle">Redis-backed quote and intraday view sourced from Polygon/Massive through Macro Stress Monitor.</div>
+            </div>
+            <div>
+                <a href="{{ url_for('landing_page') }}">Landing</a>
+                <span style="color:#36536b; padding: 0 10px;">|</span>
+                <a href="{{ url_for('stress_monitor') }}">Stress Monitor</a>
+            </div>
+        </header>
+
+        <section class="grid">
+            <div class="panel">
+                <p class="eyebrow">Intraday Stats</p>
+                <div class="stats">
+                    <div class="stat"><div class="stat-label">Price</div><div id="price" class="stat-value">--</div></div>
+                    <div class="stat"><div class="stat-label">Change</div><div id="change" class="stat-value">--</div></div>
+                    <div class="stat"><div class="stat-label">Open</div><div id="open" class="stat-value">--</div></div>
+                    <div class="stat"><div class="stat-label">High</div><div id="high" class="stat-value">--</div></div>
+                    <div class="stat"><div class="stat-label">Low</div><div id="low" class="stat-value">--</div></div>
+                    <div class="stat"><div class="stat-label">Volume</div><div id="volume" class="stat-value">--</div></div>
+                </div>
+            </div>
+            <div class="panel">
+                <p class="eyebrow">Performance</p>
+                <div class="stats">
+                    <div class="stat"><div class="stat-label">1D</div><div id="perf-1d" class="stat-value">--</div></div>
+                    <div class="stat"><div class="stat-label">5D</div><div id="perf-5d" class="stat-value">--</div></div>
+                    <div class="stat"><div class="stat-label">1M</div><div id="perf-1m" class="stat-value">--</div></div>
+                    <div class="stat"><div class="stat-label">6M</div><div id="perf-6m" class="stat-value">--</div></div>
+                    <div class="stat"><div class="stat-label">YTD</div><div id="perf-ytd" class="stat-value">--</div></div>
+                    <div class="stat"><div class="stat-label">52W Range</div><div id="range-52w" class="stat-value">--</div></div>
+                </div>
+            </div>
+        </section>
+
+        <section class="panel">
+            <p class="eyebrow">Intraday Chart</p>
+            <div class="chart-wrap">
+                <svg id="intraday-chart" viewBox="0 0 1000 360" preserveAspectRatio="none" aria-label="Intraday chart"></svg>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        const symbol = "{{ symbol }}";
+
+        function setText(id, value, className = "") {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.textContent = value;
+            el.className = className ? `stat-value ${className}` : "stat-value";
+        }
+
+        function formatPercent(value) {
+            if (value === null || value === undefined) return "--";
+            return `${value >= 0 ? "+" : ""}${Number(value).toFixed(2)}%`;
+        }
+
+        function renderQuote(payload) {
+            if (payload.error) {
+                setText("change", payload.error, "negative");
+                return;
+            }
+            setText("price", Number(payload.price).toFixed(2));
+            setText("open", Number(payload.open).toFixed(2));
+            setText("high", Number(payload.high).toFixed(2));
+            setText("low", Number(payload.low).toFixed(2));
+            setText("volume", Number(payload.volume || 0).toLocaleString());
+
+            const changeClass = Number(payload.change) >= 0 ? "positive" : "negative";
+            setText("change", `${Number(payload.change).toFixed(2)} (${Number(payload.percent).toFixed(2)}%)`, changeClass);
+
+            const perf = payload.performance || {};
+            setText("perf-1d", formatPercent(perf["1d"]), (perf["1d"] || 0) >= 0 ? "positive" : "negative");
+            setText("perf-5d", formatPercent(perf["5d"]), (perf["5d"] || 0) >= 0 ? "positive" : "negative");
+            setText("perf-1m", formatPercent(perf["1m"]), (perf["1m"] || 0) >= 0 ? "positive" : "negative");
+            setText("perf-6m", formatPercent(perf["6m"]), (perf["6m"] || 0) >= 0 ? "positive" : "negative");
+            setText("perf-ytd", formatPercent(perf["ytd"]), (perf["ytd"] || 0) >= 0 ? "positive" : "negative");
+            setText("range-52w", `${perf["low_52w"] ?? "--"} / ${perf["high_52w"] ?? "--"}`);
+        }
+
+        function renderChart(points) {
+            const svg = document.getElementById("intraday-chart");
+            if (!svg) return;
+            svg.innerHTML = "";
+            if (!Array.isArray(points) || !points.length) {
+                return;
+            }
+
+            const values = points.map((point) => Number(point.close));
+            const min = Math.min(...values);
+            const max = Math.max(...values);
+            const span = Math.max(max - min, 0.01);
+            const width = 1000;
+            const height = 360;
+            const pad = 16;
+
+            const line = values.map((value, index) => {
+                const x = pad + (index * (width - pad * 2)) / Math.max(values.length - 1, 1);
+                const y = height - pad - ((value - min) / span) * (height - pad * 2);
+                return `${index === 0 ? "M" : "L"} ${x.toFixed(1)} ${y.toFixed(1)}`;
+            }).join(" ");
+
+            const area = `${line} L ${width - pad} ${height - pad} L ${pad} ${height - pad} Z`;
+
+            const areaPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+            areaPath.setAttribute("d", area);
+            areaPath.setAttribute("fill", "rgba(54, 208, 255, 0.12)");
+            svg.appendChild(areaPath);
+
+            const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+            path.setAttribute("d", line);
+            path.setAttribute("fill", "none");
+            path.setAttribute("stroke", "#36d0ff");
+            path.setAttribute("stroke-width", "4");
+            path.setAttribute("stroke-linecap", "round");
+            path.setAttribute("stroke-linejoin", "round");
+            svg.appendChild(path);
+        }
+
+        async function loadPage() {
+            const [quoteRes, intradayRes] = await Promise.all([
+                fetch(`/api/quote/${encodeURIComponent(symbol)}`),
+                fetch(`/api/intraday/${encodeURIComponent(symbol)}`),
+            ]);
+
+            const quotePayload = await quoteRes.json();
+            const intradayPayload = await intradayRes.json();
+            renderQuote(quotePayload);
+            renderChart(intradayPayload.points || []);
+        }
+
+        loadPage();
+        setInterval(loadPage, 60000);
+    </script>
+</body>
+</html>

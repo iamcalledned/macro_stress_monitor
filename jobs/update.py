@@ -23,6 +23,7 @@ try:
         freshness_for_snapshot,
         snapshot_meta,
     )
+    from ..services import quotes
     from ..services.market_context import build_market_context
     from ..storage.redis_client import RedisClient
 except ImportError:  # pragma: no cover - direct script compatibility
@@ -38,6 +39,7 @@ except ImportError:  # pragma: no cover - direct script compatibility
         freshness_for_snapshot,
         snapshot_meta,
     )
+    from services import quotes
     from services.market_context import build_market_context
     from storage.redis_client import RedisClient
 
@@ -1275,6 +1277,12 @@ def run_full_update() -> Optional[str]:
     execution["duration_seconds"] = round(time.perf_counter() - job_start, 4)
     snapshot["execution"] = execution
     redis.write_structural_run_snapshot(run_id=run_id, snapshot=snapshot)
+    try:
+        refreshed_quotes = quotes.refresh_configured_quotes(redis)
+        if refreshed_quotes:
+            logging.info("Refreshed Redis quotes for: %s", ",".join(refreshed_quotes))
+    except Exception as exc:
+        logging.warning("Quote refresh skipped after structural run: %s", exc)
     redis.write_health_snapshot(build_health_snapshot(redis))
 
     logging.info("Run complete | mode=structural | run_id=%s | sources=%s", run_id, ",".join(sources_called))
@@ -1492,6 +1500,12 @@ def run_preview_update() -> Optional[str]:
     execution["duration_seconds"] = round(time.perf_counter() - job_start, 4)
     snapshot["execution"] = execution
     redis.write_preview_run_snapshot(run_id=run_id, snapshot=snapshot)
+    try:
+        refreshed_quotes = quotes.refresh_configured_quotes(redis)
+        if refreshed_quotes:
+            logging.info("Refreshed Redis quotes for: %s", ",".join(refreshed_quotes))
+    except Exception as exc:
+        logging.warning("Quote refresh skipped after preview run: %s", exc)
     redis.write_health_snapshot(build_health_snapshot(redis))
 
     logging.info("Run complete | mode=preview | run_id=%s | sources=%s", run_id, ",".join(sources_called))

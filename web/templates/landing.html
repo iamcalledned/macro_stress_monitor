@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bottom Sniffer Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='landing.css') }}">
+</head>
+<body>
+    <div class="page-shell">
+        <header class="hero-panel">
+            <div class="hero-copy">
+                <p class="eyebrow">Main Landing Page</p>
+                <h1 id="hero-title">Bottom Sniffer Dashboard</h1>
+                <p id="hero-subtitle" class="hero-subtitle">Powered by the Macro Stress Monitor engine</p>
+                <p id="hero-headline" class="hero-headline">Loading latest structural snapshot...</p>
+                <div class="hero-meta">
+                    <span id="hero-regime" class="pill pill-neutral">--</span>
+                    <span id="hero-updated" class="meta-chip">Updated --</span>
+                    <span id="hero-confidence" class="meta-chip">Confidence --</span>
+                    <span id="hero-quality" class="meta-chip">Data quality --</span>
+                </div>
+                <div id="hero-drivers" class="driver-row"></div>
+            </div>
+            <div class="score-panel">
+                <div class="score-label">Sniff-O-Meter</div>
+                <div id="hero-score" class="score-value">--</div>
+                <svg id="history-chart" class="history-chart" viewBox="0 0 320 120" preserveAspectRatio="none" aria-label="Recent score history"></svg>
+                <div class="score-links">
+                    <a class="action-btn action-primary" href="{{ url_for('stress_monitor') }}">Open Stress Monitor</a>
+                    <a class="action-btn" href="{{ url_for('baskets') }}">Baskets</a>
+                    <a class="action-btn" href="{{ url_for('api_dashboard') }}">JSON Snapshot</a>
+                    <a class="action-btn" href="{{ url_for('api_health') }}">Health</a>
+                </div>
+            </div>
+        </header>
+
+        <section class="preview-strip">
+            <div>
+                <div class="strip-label">Intraday Preview</div>
+                <div id="preview-assessment" class="strip-value">Loading...</div>
+            </div>
+            <div class="preview-grid">
+                <div class="preview-item"><span>Session</span><strong id="preview-session">--</strong></div>
+                <div class="preview-item"><span>Financials</span><strong id="preview-financials">--</strong></div>
+                <div class="preview-item"><span>Loans</span><strong id="preview-loans">--</strong></div>
+                <div class="preview-item"><span>JPY</span><strong id="preview-jpy">--</strong></div>
+                <div class="preview-item"><span>Regional Banks</span><strong id="preview-kre">--</strong></div>
+            </div>
+        </section>
+
+        <section class="lower-grid">
+            <main class="content-panel">
+                <div id="tab-buttons" class="tab-buttons"></div>
+                <div id="tab-summary" class="tab-summary">Loading dashboard sections...</div>
+                <div id="tab-cards" class="card-grid"></div>
+            </main>
+
+            <aside class="rail">
+                <section class="rail-panel">
+                    <h2>Trigger Map</h2>
+                    <div id="trigger-map" class="trigger-list"></div>
+                </section>
+                <section class="rail-panel">
+                    <h2>Leadership</h2>
+                    <div class="leadership-columns">
+                        <div>
+                            <h3>Leaders</h3>
+                            <div id="leaders-list" class="leader-list"></div>
+                        </div>
+                        <div>
+                            <h3>Laggards</h3>
+                            <div id="laggards-list" class="leader-list"></div>
+                        </div>
+                    </div>
+                </section>
+                <section class="rail-panel">
+                    <h2>Methodology</h2>
+                    <div id="methodology-list" class="methodology-list"></div>
+                </section>
+            </aside>
+        </section>
+    </div>
+
+    <script src="{{ url_for('static', filename='landing.js') }}"></script>
+</body>
+</html>

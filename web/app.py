@@ -5,13 +5,13 @@ import os
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from flask import Flask, Response, jsonify, render_template
+from flask import Flask, Response, abort, jsonify, redirect, render_template, url_for
 
 try:
-    from ..services import reader, render, briefs, comparisons, alerts, llm_briefs
+    from ..services import reader, render, briefs, comparisons, alerts, llm_briefs, landing, quotes, dashboard_config
     from ..storage.redis_client import RedisClient
 except ImportError:  # pragma: no cover - direct script compatibility
-    from services import reader, render, briefs, comparisons, alerts, llm_briefs
+    from services import reader, render, briefs, comparisons, alerts, llm_briefs, landing, quotes, dashboard_config
     from storage.redis_client import RedisClient
 
 try:
@@ -492,6 +492,46 @@ def _build_dashboard_payload(
     return payload
 
 
+def _build_basket_page_payload(basket: Dict[str, Any], redis_client: RedisClient) -> Dict[str, Any]:
+    stocks: List[Dict[str, Any]] = []
+    total_value = 0.0
+
+    for stock in basket.get("stocks", []):
+        item = dict(stock)
+        ticker = str(item.get("ticker", "")).strip().upper()
+        quote_payload = quotes.get_quote_payload(ticker, redis_client=redis_client) if ticker else {}
+        current_price = float(quote_payload.get("price") or 0.0)
+        shares = float(item.get("shares") or 0.0)
+        current_value = current_price * shares
+        initial_investment = float(item.get("initial_investment") or 0.0)
+        previous_close = quote_payload.get("previous_close")
+        change_percent = 0.0
+        if isinstance(previous_close, (int, float)) and previous_close:
+            change_percent = ((current_price - float(previous_close)) / float(previous_close)) * 100
+
+        item["ticker"] = ticker
+        item["quote"] = quote_payload
+        item["current_price"] = current_price
+        item["current_value"] = current_value
+        item["return_percent"] = ((current_value - initial_investment) / initial_investment * 100) if initial_investment else 0.0
+        item["change_percent"] = change_percent
+        stocks.append(item)
+        total_value += current_value
+
+    for item in stocks:
+        item["allocation_percent"] = (item["current_value"] / total_value * 100) if total_value else 0.0
+
+    initial_total = sum(float(item.get("initial_investment") or 0.0) for item in stocks)
+    total_return_percent = ((total_value - initial_total) / initial_total * 100) if initial_total else 0.0
+
+    return {
+        "stocks": stocks,
+        "total_value": total_value,
+        "total_return_percent": total_return_percent,
+        "initial_total": initial_total,
+    }
+
+
 def create_app():
     """Creates and configures the Flask application."""
     app = Flask(__name__)
@@ -503,8 +543,84 @@ def create_app():
         redis_client = None
 
     @app.route("/")
-    def dashboard():
+    @app.route("/dashboard")
+    def landing_page():
+        return render_template("landing.html")
+
+    @app.route("/stress-monitor")
+    @app.route("/terminal")
+    def stress_monitor():
         return render_template("index.html")
+
+    @app.route("/api/landing")
+    def api_landing():
+        if redis_client is None:
+            return jsonify({"error": "Redis unavailable"}), 503
+        structural_snapshot = redis_client.get_latest_structural_snapshot()
+        if structural_snapshot is None:
+            return jsonify({"error": "No structural run snapshot available"}), 404
+        payload = landing.build_landing_payload(
+            structural_snapshot=structural_snapshot,
+            preview_snapshot=redis_client.get_latest_preview_snapshot(),
+            history_data=redis_client.get_history(),
+        )
+        return jsonify(payload), 200
+
+    @app.route("/details/<path:symbol>")
+    def details(symbol: str):
+        return render_template("details.html", symbol=symbol.upper())
+
+    @app.route("/api/quote/<path:symbol>")
+    def api_quote(symbol: str):
+        if redis_client is None:
+            return jsonify({"error": "Redis unavailable"}), 503
+        payload = quotes.get_quote_payload(symbol, redis_client=redis_client)
+        status = 200 if not payload.get("error") else 404
+        return jsonify(payload), status
+
+    @app.route("/api/intraday/<path:symbol>")
+    def api_intraday(symbol: str):
+        if redis_client is None:
+            return jsonify({"error": "Redis unavailable"}), 503
+        payload = quotes.get_intraday_payload(symbol, redis_client=redis_client)
+        status = 200 if not payload.get("error") else 404
+        return jsonify(payload), status
+
+    @app.route("/baskets")
+    def baskets():
+        config = dashboard_config.load_dashboard_config()
+        all_baskets = dashboard_config.get_baskets(config)
+        if all_baskets:
+            first_basket = all_baskets[0].get("name")
+            if first_basket:
+                return redirect(url_for("basket_detail", basket_name=first_basket))
+        return render_template(
+            "baskets_index.html",
+            dashboard_name=config.get("dashboard_name", "Bottom Sniffer Dashboard"),
+            all_baskets=all_baskets,
+            config_path=config.get("_config_path"),
+        )
+
+    @app.route("/baskets/<basket_name>")
+    def basket_detail(basket_name: str):
+        if redis_client is None:
+            return jsonify({"error": "Redis unavailable"}), 503
+        config = dashboard_config.load_dashboard_config()
+        all_baskets = dashboard_config.get_baskets(config)
+        basket = dashboard_config.get_basket(basket_name, config)
+        if basket is None:
+            abort(404, description=f"No basket found for '{basket_name}'")
+
+        computed = _build_basket_page_payload(basket, redis_client)
+        return render_template(
+            "ned_baskets.html",
+            basket_info=basket,
+            stocks=computed["stocks"],
+            total_value=computed["total_value"],
+            total_return_percent=computed["total_return_percent"],
+            initial_total=computed["initial_total"],
+            all_baskets=all_baskets,
+        )
 
     @app.route("/api/dashboard")
     def api_dashboard():

@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ basket_info.name }} | Basket</title>
+    <style>
+        :root {
+            color-scheme: dark;
+            --bg: #060d14;
+            --panel: #0d1722;
+            --panel-2: #142231;
+            --line: #23384d;
+            --text: #e8eef5;
+            --muted: #90a4b7;
+            --accent: #36d0ff;
+            --positive: #4ade80;
+            --negative: #f87171;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background:
+                radial-gradient(circle at top left, rgba(54, 208, 255, 0.14), transparent 25%),
+                radial-gradient(circle at top right, rgba(74, 222, 128, 0.08), transparent 20%),
+                linear-gradient(180deg, #060d14 0%, #08121b 100%);
+            color: var(--text);
+            font-family: "Avenir Next", "Segoe UI", sans-serif;
+        }
+        .page {
+            max-width: 1380px;
+            margin: 0 auto;
+            padding: 28px 20px 40px;
+        }
+        .header, .summary-card, .stock-card {
+            border: 1px solid var(--line);
+            border-radius: 20px;
+            background: rgba(13, 23, 34, 0.86);
+            backdrop-filter: blur(12px);
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            gap: 18px;
+            padding: 22px 24px;
+            margin-bottom: 18px;
+            align-items: flex-start;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: clamp(2rem, 4vw, 3.2rem);
+        }
+        .header p {
+            margin: 10px 0 0;
+            color: var(--muted);
+        }
+        .header a {
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 700;
+        }
+        .header-links {
+            display: flex;
+            gap: 14px;
+            flex-wrap: wrap;
+        }
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 14px;
+            margin-bottom: 18px;
+        }
+        .summary-card {
+            padding: 18px;
+        }
+        .eyebrow {
+            color: var(--accent);
+            font-size: 0.76rem;
+            text-transform: uppercase;
+            letter-spacing: 0.14em;
+            font-weight: 800;
+        }
+        .summary-value {
+            margin-top: 12px;
+            font-size: 2rem;
+            font-weight: 700;
+        }
+        .summary-note {
+            margin-top: 8px;
+            color: var(--muted);
+        }
+        .basket-nav {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 18px;
+        }
+        .basket-nav a {
+            display: inline-flex;
+            align-items: center;
+            min-height: 38px;
+            padding: 0 14px;
+            color: var(--text);
+            text-decoration: none;
+            border-radius: 999px;
+            border: 1px solid var(--line);
+            background: rgba(20, 34, 49, 0.9);
+        }
+        .stock-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 16px;
+        }
+        .stock-card {
+            padding: 18px;
+        }
+        .stock-card a {
+            color: inherit;
+            text-decoration: none;
+            display: block;
+        }
+        .stock-top {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            align-items: flex-start;
+        }
+        .stock-top h2 {
+            margin: 0;
+            font-size: 1.3rem;
+        }
+        .muted {
+            color: var(--muted);
+        }
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(35, 56, 77, 0.55);
+        }
+        .metric-row:last-child {
+            border-bottom: 0;
+            padding-bottom: 0;
+        }
+        .sparkline {
+            width: 100%;
+            height: 72px;
+            margin-top: 14px;
+            border-radius: 14px;
+            background: rgba(20, 34, 49, 0.9);
+            border: 1px solid rgba(35, 56, 77, 0.8);
+        }
+        .positive { color: var(--positive); }
+        .negative { color: var(--negative); }
+        @media (max-width: 1100px) {
+            .summary-grid, .stock-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        }
+        @media (max-width: 760px) {
+            .header, .summary-grid, .stock-grid { grid-template-columns: 1fr; }
+            .header { flex-direction: column; }
+            .summary-grid, .stock-grid { display: grid; grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <header class="header">
+            <div>
+                <div class="eyebrow">Basket View</div>
+                <h1>{{ basket_info.name }}</h1>
+                <p>
+                    {% if basket_info.investment_date %}
+                    Based on an initial basket date of {{ basket_info.investment_date }}.
+                    {% else %}
+                    Redis-backed basket view using Polygon/Massive quote data.
+                    {% endif %}
+                </p>
+            </div>
+            <div class="header-links">
+                <a href="{{ url_for('landing_page') }}">Landing</a>
+                <a href="{{ url_for('stress_monitor') }}">Stress Monitor</a>
+                <a href="{{ url_for('baskets') }}">Basket List</a>
+            </div>
+        </header>
+
+        <section class="summary-grid">
+            <div class="summary-card">
+                <div class="eyebrow">Current Value</div>
+                <div class="summary-value">${{ "%.2f"|format(total_value) }}</div>
+                <div class="summary-note">Live total across tracked positions.</div>
+            </div>
+            <div class="summary-card">
+                <div class="eyebrow">Initial Capital</div>
+                <div class="summary-value">${{ "%.2f"|format(initial_total) }}</div>
+                <div class="summary-note">Configured basket starting capital.</div>
+            </div>
+            <div class="summary-card">
+                <div class="eyebrow">Total Return</div>
+                <div class="summary-value {% if total_return_percent >= 0 %}positive{% else %}negative{% endif %}">
+                    {{ "%.2f"|format(total_return_percent) }}%
+                </div>
+                <div class="summary-note">Computed from current value versus initial capital.</div>
+            </div>
+            <div class="summary-card">
+                <div class="eyebrow">Positions</div>
+                <div class="summary-value">{{ stocks|length }}</div>
+                <div class="summary-note">Configured names in this basket.</div>
+            </div>
+        </section>
+
+        {% if all_baskets %}
+        <nav class="basket-nav">
+            {% for basket in all_baskets %}
+            <a href="{{ url_for('basket_detail', basket_name=basket.name) }}">{{ basket.name }}</a>
+            {% endfor %}
+        </nav>
+        {% endif %}
+
+        <section class="stock-grid">
+            {% for stock in stocks %}
+            <article class="stock-card">
+                <a href="{{ url_for('details', symbol=stock.ticker) }}">
+                    <div class="stock-top">
+                        <div>
+                            <h2>{{ stock.ticker }}</h2>
+                            <div class="muted">{{ stock.name or "Configured basket member" }}</div>
+                        </div>
+                        <div class="{% if stock.change_percent >= 0 %}positive{% else %}negative{% endif %}">
+                            {{ "%.2f"|format(stock.change_percent) }}%
+                        </div>
+                    </div>
+                    <div style="margin-top: 14px;">
+                        <div class="metric-row"><span class="muted">Price</span><strong>${{ "%.2f"|format(stock.current_price) }}</strong></div>
+                        <div class="metric-row"><span class="muted">Current Value</span><strong>${{ "%.2f"|format(stock.current_value) }}</strong></div>
+                        <div class="metric-row"><span class="muted">Allocation</span><strong>{{ "%.2f"|format(stock.allocation_percent) }}%</strong></div>
+                        <div class="metric-row"><span class="muted">Return</span><strong class="{% if stock.return_percent >= 0 %}positive{% else %}negative{% endif %}">{{ "%.2f"|format(stock.return_percent) }}%</strong></div>
+                    </div>
+                    <svg id="spark-{{ stock.ticker }}" class="sparkline" viewBox="0 0 300 72" preserveAspectRatio="none" aria-label="Intraday sparkline for {{ stock.ticker }}"></svg>
+                </a>
+            </article>
+            {% endfor %}
+        </section>
+    </div>
+
+    <script>
+        const tickers = {{ stocks | map(attribute='ticker') | list | tojson }};
+
+        function renderSparkline(ticker, points) {
+            const svg = document.getElementById(`spark-${ticker}`);
+            if (!svg || !Array.isArray(points) || !points.length) return;
+            svg.innerHTML = "";
+
+            const values = points.map((point) => Number(point.close));
+            const min = Math.min(...values);
+            const max = Math.max(...values);
+            const span = Math.max(max - min, 0.01);
+            const width = 300;
+            const height = 72;
+            const pad = 6;
+
+            const line = values.map((value, index) => {
+                const x = pad + (index * (width - pad * 2)) / Math.max(values.length - 1, 1);
+                const y = height - pad - ((value - min) / span) * (height - pad * 2);
+                return `${index === 0 ? "M" : "L"} ${x.toFixed(1)} ${y.toFixed(1)}`;
+            }).join(" ");
+
+            const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+            path.setAttribute("d", line);
+            path.setAttribute("stroke", "#36d0ff");
+            path.setAttribute("stroke-width", "2.5");
+            path.setAttribute("fill", "none");
+            path.setAttribute("stroke-linecap", "round");
+            path.setAttribute("stroke-linejoin", "round");
+            svg.appendChild(path);
+        }
+
+        async function loadSparklines() {
+            await Promise.all(tickers.map(async (ticker) => {
+                const response = await fetch(`/api/intraday/${encodeURIComponent(ticker)}`);
+                const payload = await response.json();
+                renderSparkline(ticker, payload.points || []);
+            }));
+        }
+
+        loadSparklines();
+    </script>
+</body>
+</html>

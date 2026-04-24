@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Baskets</title>
+    <style>
+        :root {
+            color-scheme: dark;
+            --bg: #07111a;
+            --panel: #0f1d29;
+            --line: #23384b;
+            --text: #e6edf3;
+            --muted: #8fa6bb;
+            --accent: #36d0ff;
+        }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: linear-gradient(180deg, #07111a 0%, #09141e 100%);
+            color: var(--text);
+            font-family: "Avenir Next", "Segoe UI", sans-serif;
+        }
+        .page {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 32px 20px 40px;
+        }
+        .panel {
+            padding: 24px;
+            border: 1px solid var(--line);
+            border-radius: 22px;
+            background: rgba(15, 29, 41, 0.88);
+        }
+        h1 { margin: 0 0 12px; font-size: clamp(2rem, 4vw, 3rem); }
+        p { color: var(--muted); line-height: 1.55; }
+        a {
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 700;
+        }
+        ul {
+            margin: 18px 0 0;
+            padding-left: 18px;
+        }
+        li + li { margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <div class="panel">
+            <h1>{{ dashboard_name }}</h1>
+            {% if all_baskets %}
+            <p>Select one of the configured baskets.</p>
+            <ul>
+                {% for basket in all_baskets %}
+                <li><a href="{{ url_for('basket_detail', basket_name=basket.name) }}">{{ basket.name }}</a></li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p>No baskets are configured yet. Add a `baskets` array to the dashboard config file and this page will populate automatically.</p>
+            {% if config_path %}
+            <p>Config path: <code>{{ config_path }}</code></p>
+            {% endif %}
+            <p><a href="{{ url_for('landing_page') }}">Return to landing page</a></p>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>

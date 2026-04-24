@@ -32,6 +32,23 @@ body {
     overflow: hidden;
 }
 
+.terminal-nav {
+    display: flex;
+    justify-content: flex-end;
+    padding: 2px 2px 0;
+}
+
+.terminal-nav a {
+    color: var(--cyan);
+    text-decoration: none;
+    font-size: 10px;
+    text-transform: uppercase;
+}
+
+.terminal-nav a:hover {
+    color: var(--text-bright);
+}
+
 /* Status Strip */
 .status-strip {
     background-color: var(--bg-panel-header);
